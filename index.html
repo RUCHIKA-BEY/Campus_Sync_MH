@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CampusSync — academic timetable and event coordination for university life." />
+  <title>CampusSync — Academic-context-aware event coordination</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="#landing" data-nav="landing" aria-label="CampusSync home">
+        <span class="brand-mark" aria-hidden="true">↗</span>
+        <span><strong>Campus</strong><em>Sync</em></span>
+      </a>
+      <nav class="main-nav" aria-label="Primary navigation">
+        <button class="nav-link is-active" data-nav="landing">Home</button>
+        <button class="nav-link" data-nav="discover">Discover Events</button>
+        <button class="nav-link" data-nav="timetable">My Timetable</button>
+        <button class="nav-link" data-nav="registrations">My Registrations</button>
+        <button class="nav-link" data-nav="clubs">Clubs</button>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button notification-trigger" aria-label="Open notifications"><span aria-hidden="true">♢</span><i>3</i></button>
+        <button class="profile-chip" data-nav="registrations"><span class="avatar">PS</span><span class="profile-copy"><strong>Priya Sharma</strong><small>Student</small></span><span aria-hidden="true">⌄</span></button>
+        <button class="mobile-menu" aria-label="Open navigation">☰</button>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="page-view is-visible" data-page="landing">
+        <div class="hero ambient-bg">
+          <div class="container hero-grid">
+            <div class="hero-copy">
+              <span class="eyebrow-pill"><span>✦</span> Academic Timetable &amp; Event Coordination</span>
+              <h1>Your campus is full of <span>possibilities.</span></h1>
+              <p class="lead">Find events worth showing up for, discover communities that match your interests, and make the most of your university life—without risking attendance shortage.</p>
+              <div class="button-row">
+                <button class="button button-primary" data-nav="discover">Explore Events <span>→</span></button>
+                <button class="button button-secondary" data-nav="clubs">Discover Clubs</button>
+              </div>
+              <div class="differentiator-strip">
+                <div><strong>100% Conflict Free</strong><span>Instant timetable checking</span></div>
+                <div><strong>Verified OD</strong><span>Direct DSA clearance slips</span></div>
+                <div><strong>One-Scan Check-in</strong><span>QR ticketing pass</span></div>
+              </div>
+            </div>
+            <div class="hero-visual">
+              <article class="hero-card image-card">
+                <div class="image-wrap"><img src="/assets/hero_campus_life_1793037312856.jpg" alt="University campus pavilion at twilight" /></div>
+                <div class="hero-card-body">
+                  <div class="meta-line"><strong>IEEE Student Branch</strong><span>Next Upcoming Session</span></div>
+                  <h3>HackGrid 2026: 24h Campus Hackathon</h3>
+                  <p>Build boldly, collaborate with peers, and turn your sharpest ideas into a campus-ready prototype.</p>
+                  <div class="card-footer-line"><span>Innovation &amp; Incubation Lab</span><button class="text-button" data-event="hackgrid">Inspect Timetable Fit →</button></div>
+                </div>
+              </article>
+              <div class="floating-callout"><span class="check-dot">✓</span><div><strong>Live Timetable Guard</strong><p>Evaluates lecture hours before you register. Supports DSA On-Duty clearance.</p></div></div>
+            </div>
+          </div>
+        </div>
+
+        <section class="section container" id="interest-section">
+          <div class="section-heading"><div><h2>Discover by interest</h2><p>Select a category to filter live campus events.</p></div><button class="text-button" data-nav="discover">View Complete Directory <span>›</span></button></div>
+          <div class="filter-tabs" role="tablist" aria-label="Event categories">
+            <button class="filter-tab is-active" data-category="All">All Events</button><button class="filter-tab" data-category="Technology">Technology</button><button class="filter-tab" data-category="Hackathons">Hackathons</button><button class="filter-tab" data-category="Entrepreneurship">Entrepreneurship</button><button class="filter-tab" data-category="Arts & Culture">Arts &amp; Culture</button><button class="filter-tab" data-category="Music">Music</button><button class="filter-tab" data-category="Research">Research</button>
+          </div>
+          <div class="event-grid" id="landing-events"></div>
+        </section>
+
+        <section class="workflow-section"><div class="container"><div class="center-heading"><span class="section-kicker">The CampusSync Workflow</span><h2>Academic-Context-Aware Event Coordination</h2><p>We eliminated the guesswork of skipping lectures or arguing with faculty over event attendance.</p></div><div class="workflow-grid"><article class="workflow-card"><b>01</b><h3>Discover &amp; Filter</h3><p>Browse student-organized technical hackathons, cultural festivals, and entrepreneurship pitch sessions.</p></article><article class="workflow-card"><b>02</b><h3>Check Your Schedule</h3><p>Click register and our algorithm instantly evaluates your personal Monday–Friday timetable for collisions.</p></article><article class="workflow-card"><b>03</b><h3>One-Click OD</h3><p>If an approved event overlaps with your lectures, request institutional On-Duty directly during signup.</p></article><article class="workflow-card"><b>04</b><h3>QR Entry Pass</h3><p>Get a secure, scannable pass that keeps your event check-in and registration details in one place.</p></article></div></div></section>
+      </section>
+
+      <section class="page-view" data-page="discover"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Campus directory</span><h1>Discover events</h1><p>Find your next meaningful campus experience.</p></div><button class="button button-primary" data-action="open-create">＋ Create Event</button></div><div class="discover-toolbar"><label class="search-field"><span>⌕</span><input id="event-search" type="search" placeholder="Search events, clubs, or venues" /></label><select id="discover-category" aria-label="Filter by category"><option value="All">All categories</option><option>Technology</option><option>Hackathons</option><option>Entrepreneurship</option><option>Arts & Culture</option><option>Music</option><option>Research</option></select><button class="button button-secondary" id="date-filter">◷ Any date</button></div><div class="discover-layout"><div><div class="result-count" id="result-count"></div><div class="event-grid event-grid-discover" id="discover-events"></div></div><aside class="side-panel"><div class="panel-heading"><div><span class="section-kicker">Your pulse</span><h3>Campus snapshot</h3></div><span class="live-badge"><i></i> Live</span></div><div class="snapshot-row"><strong>24</strong><span>events this month</span></div><div class="snapshot-row"><strong>18</strong><span>active student clubs</span></div><div class="snapshot-row"><strong>06</strong><span>OD-friendly events</span></div><div class="mini-note"><span>✦</span><p>New: Arts &amp; Culture week registrations open today.</p></div></aside></div></div></section>
+
+      <section class="page-view" data-page="timetable"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Academic context</span><h1>My timetable</h1><p>Keep your commitments visible before you say yes.</p></div><button class="button button-secondary">＋ Add class</button></div><div class="timetable-toolbar"><div class="segmented"><button class="is-active">Week</button><button>Day</button></div><div class="week-switcher"><button>‹</button><strong>October 20 – 26, 2026</strong><button>›</button></div><span class="status-pill success">✓ Sync healthy</span></div><div class="timetable-card"><div class="timetable-grid"><div class="time-col"><span></span><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div><div class="day-col"><strong>MON <em>20</em></strong><div class="class-block blue" style="top:56px;height:128px"><b>Data Structures</b><small>CS301 · Room B-204</small></div><div class="class-block purple" style="top:310px;height:96px"><b>Operating Systems</b><small>CS302 · Room A-112</small></div></div><div class="day-col"><strong>TUE <em>21</em></strong><div class="class-block orange" style="top:116px;height:94px"><b>Human Computer Interaction</b><small>DES210 · Studio 2</small></div><div class="class-block blue" style="top:310px;height:128px"><b>Database Systems</b><small>CS304 · Room B-106</small></div></div><div class="day-col today"><strong>WED <em>22</em></strong><div class="class-block green" style="top:56px;height:158px"><b>Machine Learning</b><small>AI401 · Lab 3</small></div><div class="class-block purple" style="top:374px;height:96px"><b>Professional Ethics</b><small>HU201 · Room C-210</small></div></div><div class="day-col"><strong>THU <em>23</em></strong><div class="class-block orange" style="top:178px;height:96px"><b>Software Engineering</b><small>CS305 · Room B-201</small></div><div class="class-block blue" style="top:310px;height:128px"><b>Computer Networks</b><small>CS306 · Room A-306</small></div></div><div class="day-col"><strong>FRI <em>24</em></strong><div class="class-block green" style="top:56px;height:96px"><b>Innovation Lab</b><small>INN110 · Makerspace</small></div><div class="class-block purple" style="top:246px;height:128px"><b>Data Structures</b><small>CS301 · Room B-204</small></div></div></div></div><div class="timetable-insight"><span>✦</span><div><strong>Timetable guard is on</strong><p>CampusSync checks these blocks automatically when you register. Events with a clash can still be requested with an On-Duty slip.</p></div></div></div></section>
+
+      <section class="page-view" data-page="registrations"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Your activity</span><h1>My registrations</h1><p>Everything you’ve said yes to, in one calm place.</p></div><button class="button button-primary" data-nav="discover">＋ Find more events</button></div><div class="registration-tabs"><button class="is-active">Upcoming <span>3</span></button><button>Past <span>8</span></button><button>Saved <span>4</span></button></div><div class="registration-list" id="registration-list"></div></div></section>
+
+      <section class="page-view" data-page="clubs"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Find your people</span><h1>Clubs directory</h1><p>Communities that make campus feel a little more like yours.</p></div><label class="search-field compact"><span>⌕</span><input id="club-search" type="search" placeholder="Search clubs" /></label></div><div class="club-grid" id="club-grid"></div></div></section>
+
+      <section class="page-view" data-page="organizer"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Organizer workspace</span><h1>Good morning, Arjun.</h1><p>Here’s what needs your attention today.</p></div><button class="button button-primary" data-action="open-create">＋ Create Event</button></div><div class="stats-grid"><div class="stat-card"><span>Total registrations</span><strong>284</strong><em class="up">↑ 18.6%</em></div><div class="stat-card"><span>Upcoming events</span><strong>07</strong><em>Across 4 clubs</em></div><div class="stat-card"><span>Attendance rate</span><strong>91.4%</strong><em class="up">↑ 3.2%</em></div><div class="stat-card"><span>OD requests</span><strong>18</strong><em class="warning">Needs review</em></div></div><div class="dashboard-grid"><div class="dashboard-card"><div class="panel-heading"><div><span class="section-kicker">Your events</span><h3>Performance overview</h3></div><button class="text-button">View all →</button></div><div class="table-list"><div><span class="event-dot orange"></span><strong>HackGrid 2026</strong><small>Oct 24 · 124 registrations</small><b>82%</b></div><div><span class="event-dot purple"></span><strong>Quantum Symposium</strong><small>Nov 02 · 86 registrations</small><b>64%</b></div><div><span class="event-dot green"></span><strong>Rover Bootcamp</strong><small>Nov 08 · 74 registrations</small><b>51%</b></div></div></div><div class="dashboard-card notice-card"><span class="section-kicker">Action queue</span><h3>18 OD requests need review</h3><p>Students are waiting for clearance on events that overlap with their academic timetable.</p><button class="button button-secondary">Review requests →</button></div></div></div></section>
+
+      <section class="page-view" data-page="dsa"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">DSA clearance desk</span><h1>On-Duty requests</h1><p>Review event participation against student academic schedules.</p></div><span class="status-pill success">● Office online</span></div><div class="stats-grid"><div class="stat-card"><span>Pending review</span><strong>18</strong><em class="warning">Needs action</em></div><div class="stat-card"><span>Approved this week</span><strong>42</strong><em class="up">↑ 12%</em></div><div class="stat-card"><span>Average response</span><strong>2.4h</strong><em class="up">↓ 18 min</em></div></div><div class="dashboard-card"><div class="panel-heading"><div><span class="section-kicker">Queue</span><h3>Recent clearance requests</h3></div><button class="button button-secondary">Export CSV</button></div><div class="request-table"><div class="request-row header"><span>Student</span><span>Event</span><span>Overlap</span><span>Status</span><span></span></div><div class="request-row"><span><b>Priya Sharma</b><small>22CS1042</small></span><span>HackGrid 2026</span><span>2 classes</span><span class="status-pill pending">Pending</span><button class="text-button">Review</button></div><div class="request-row"><span><b>Rahul Menon</b><small>22EC2098</small></span><span>Rover Bootcamp</span><span>1 class</span><span class="status-pill pending">Pending</span><button class="text-button">Review</button></div><div class="request-row"><span><b>Aisha Khan</b><small>22DS3011</small></span><span>Acoustic Sunset</span><span>None</span><span class="status-pill success">Approved</span><button class="text-button">View</button></div></div></div></div></section>
+
+      <section class="page-view" data-page="admin"><div class="container page-container"><div class="page-title-row"><div><span class="section-kicker">Platform operations</span><h1>Admin overview</h1><p>Keep campus coordination healthy and trusted.</p></div><button class="button button-secondary">Download report</button></div><div class="stats-grid"><div class="stat-card"><span>Active users</span><strong>2,840</strong><em class="up">↑ 8.4%</em></div><div class="stat-card"><span>Approved events</span><strong>126</strong><em class="up">↑ 14 this week</em></div><div class="stat-card"><span>Registered clubs</span><strong>18</strong><em>All verified</em></div><div class="stat-card"><span>System health</span><strong>99.9%</strong><em class="up">Operational</em></div></div><div class="dashboard-grid"><div class="dashboard-card"><div class="panel-heading"><div><span class="section-kicker">Moderation</span><h3>Pending approvals</h3></div><span class="count-badge">06</span></div><div class="table-list"><div><span class="event-dot orange"></span><strong>Design Thinking Sprint</strong><small>Submitted by Design Guild · 12m ago</small><button class="text-button">Review</button></div><div><span class="event-dot purple"></span><strong>Women in Tech: Fireside Chat</strong><small>Submitted by WIT Campus · 28m ago</small><button class="text-button">Review</button></div><div><span class="event-dot green"></span><strong>Open Mic: Reverb</strong><small>Submitted by Cultural Guild · 1h ago</small><button class="text-button">Review</button></div></div></div><div class="dashboard-card admin-health"><span class="section-kicker">System pulse</span><h3>Everything looks healthy.</h3><div class="health-bar"><span style="width:94%"></span></div><div class="health-items"><span>Events API <b>Operational</b></span><span>Notifications <b>Operational</b></span><span>QR check-in <b>Operational</b></span></div></div></div></div></section>
+    </main>
+
+    <aside class="evaluation-ribbon" aria-label="Evaluation Console"><div class="container ribbon-inner"><div><span class="pulse-dot"></span><strong>Evaluation Mode Active:</strong><span>Current Persona: <b id="persona-label">Priya Sharma (STUDENT)</b></span></div><div class="role-switcher"><small>Quick Perspective Switch:</small><button class="role-button is-active" data-role="STUDENT" data-target="discover">1. Student (Priya)</button><button class="role-button" data-role="ORGANIZER" data-target="organizer">2. Organizer (Arjun)</button><button class="role-button" data-role="DSA" data-target="dsa">3. DSA (Dr. Ramanathan)</button><button class="role-button" data-role="ADMIN" data-target="admin">4. Admin</button></div></div></aside>
+    <footer class="site-footer"><div class="container footer-inner"><div class="footer-brand"><span class="brand-mark">↗</span><div><strong>Campus<span>Sync</span></strong><p>Make space for what matters.</p></div></div><div class="footer-links"><a href="#discover">Events</a><a href="#clubs">Clubs</a><a href="#timetable">Timetable</a><a href="#">Help centre</a></div><span class="copyright">© 2026 CampusSync</span></div></footer>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" data-action="close-modal" aria-label="Close">×</button><div id="modal-content"></div></div></div>
+  <aside class="notification-drawer" id="notification-drawer" aria-label="Notifications" hidden><div class="drawer-header"><div><span class="section-kicker">Your updates</span><h2>Notifications</h2></div><button class="modal-close" data-action="close-notifications">×</button></div><div class="notification-list"><article class="notification unread"><span class="notification-icon green">✓</span><div><strong>On-Duty Approved!</strong><p>Your OD request for Acoustic Sunset has been approved.</p><small>24 minutes ago</small></div></article><article class="notification unread"><span class="notification-icon orange">✦</span><div><strong>New Featured Event</strong><p>VentureForge is now open for registration.</p><small>2 hours ago</small></div></article><article class="notification"><span class="notification-icon mauve">♢</span><div><strong>Registration reminder</strong><p>HackGrid 2026 starts this Saturday at 10:00 AM.</p><small>Yesterday</small></div></article></div><button class="button button-secondary full-width" data-action="mark-read">Mark all as read</button></aside>
+  <script src="app.js"></script>
+</body>
+</html>
