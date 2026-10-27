@@ -18,6 +18,32 @@ let state = {page:'landing', category:'All', query:'', registrations:['hackgrid'
 const $ = (selector, root=document) => root.querySelector(selector);
 const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
 function eventById(id){return events.find(event=>event.id===id);}
+function positionTimetableBlocks(){
+  const grid=$('.timetable-grid');
+  if(!grid)return;
+  const style=getComputedStyle(grid);
+  const headerHeight=parseFloat(style.getPropertyValue('--timetable-header-height'));
+  const hourHeight=parseFloat(style.getPropertyValue('--timetable-hour-height'));
+  const schedule=[
+    [['09:00',120],['13:00',90]],
+    [['10:00',90],['13:00',120]],
+    [['09:00',150],['14:00',90]],
+    [['11:00',90],['13:00',120]],
+    [['09:00',90],['12:00',120]]
+  ];
+  $$('.day-col',grid).forEach((day,dayIndex)=>{
+    const blocks=$$('.class-block',day);
+    const daySchedule=schedule[dayIndex];
+    if(!daySchedule||blocks.length!==daySchedule.length)throw new Error('Timetable blocks do not match the configured schedule.');
+    blocks.forEach((block,blockIndex)=>{
+      const [start,duration]=daySchedule[blockIndex];
+      const [hours,minutes]=start.split(':').map(Number);
+      const minutesFromStart=(hours-9)*60+minutes;
+      block.style.top=`${headerHeight+(minutesFromStart/60)*hourHeight}px`;
+      block.style.height=`${(duration/60)*hourHeight}px`;
+    });
+  });
+}
 function navigate(page){
   state.page=page;
   $$('.page-view').forEach(view=>view.classList.toggle('is-visible', view.dataset.page===page));
@@ -120,5 +146,6 @@ document.addEventListener('submit',event=>{
 });
 $('#modal-backdrop').addEventListener('click',event=>{if(event.target.id==='modal-backdrop')event.currentTarget.hidden=true;});
 window.addEventListener('hashchange',()=>{const page=window.location.hash.replace('#','');if(document.querySelector(`[data-page="${page}"]`))navigate(page);});
+positionTimetableBlocks();
 renderLandingEvents();renderDiscover();renderRegistrations();renderClubs();bindDynamicEvents();
 const initial=window.location.hash.replace('#','');if(initial&&document.querySelector(`[data-page="${initial}"]`))navigate(initial);
