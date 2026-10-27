@@ -1867,48 +1867,201 @@ main {
     font-size: .72rem
 }
 
-.ticket-pass {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    margin: 20px 0;
-    padding: 16px;
-    border: 1px dashed var(--border-strong);
-    border-radius: 14px;
+.digital-pass-header {
+    padding-right: 28px;
+    margin-bottom: 17px
+}
+
+.pass-eyebrow {
+    display: inline-block;
+    margin-bottom: 9px;
+    color: var(--accent);
+    font-size: .63rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase
+}
+
+.digital-pass-header h2 {
+    margin-bottom: 6px;
+    color: var(--text-primary);
+    font-size: clamp(1.15rem, 3.6vw, 1.5rem);
+    line-height: 1.25
+}
+
+.modal .pass-venue {
+    font-size: .76rem;
+    font-weight: 600
+}
+
+.pass-qr-card {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 18px 14px 12px;
+    border: 1px solid #eee4d8;
+    border-radius: 16px;
     background: var(--bg-cream)
 }
 
-.ticket-qr {
-    width: 90px;
-    height: 90px;
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 4px;
-    border: 6px solid var(--text-primary);
+.pass-qr {
+    display: block;
+    width: min(190px, 55vw);
+    aspect-ratio: 1;
+    padding: 8px;
+    border: 1px solid #eee4d8;
+    border-radius: 12px;
+    background: #fff
+}
+
+.pass-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    padding: 5px 6px 5px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 9px;
     background: #fff;
+    gap: 9px
+}
+
+.pass-code-row code {
+    overflow-wrap: anywhere;
     color: var(--text-primary);
-    font-size: 3.2rem;
-    line-height: .7
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .025em
 }
 
-.ticket-qr small {
-    font-size: .48rem;
-    font-weight: 800
+.pass-copy-button {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--bg-cream);
+    color: var(--accent);
+    font-size: 1rem
 }
 
-.ticket-pass>div:last-child {
+.pass-copy-button:hover {
+    background: var(--orange-bg)
+}
+
+.pass-copy-status {
+    min-height: 1em;
+    color: var(--green);
+    font-size: .62rem
+}
+
+.pass-attendee-grid {
     display: grid;
-    gap: 5px
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 15px 0;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: #fff
 }
 
-.ticket-pass strong {
-    font-size: .84rem
+.pass-attendee-grid>div {
+    min-width: 0;
+    padding: 12px 14px
 }
 
-.ticket-pass span {
-    font-size: .65rem;
+.pass-attendee-grid>div:nth-child(odd) {
+    border-right: 1px solid var(--border-subtle)
+}
+
+.pass-attendee-grid>div:nth-child(n+3) {
+    border-top: 1px solid var(--border-subtle)
+}
+
+.pass-attendee-grid dt {
+    margin-bottom: 5px;
+    color: var(--text-muted);
+    font-size: .57rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase
+}
+
+.pass-attendee-grid dd {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: .72rem;
+    font-weight: 700;
+    overflow-wrap: anywhere
+}
+
+.pass-status-list {
+    display: grid;
+    gap: 8px
+}
+
+.pass-status-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 11px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: #fff
+}
+
+.pass-status-icon {
+    display: grid;
+    width: 23px;
+    height: 23px;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--bg-cream);
+    color: var(--accent);
+    font-size: .83rem
+}
+
+.pass-status-name {
+    color: var(--text-primary);
+    font-size: .68rem;
+    font-weight: 700
+}
+
+.pass-status-badge {
+    padding: 5px 8px;
+    border: 1px solid;
+    border-radius: 99px;
+    font-size: .53rem;
+    font-weight: 800;
+    letter-spacing: .035em;
+    text-align: center;
+    text-transform: uppercase
+}
+
+.pass-status-badge.pending {
+    border-color: #e9c58f;
+    background: #fff8eb;
+    color: #96611a
+}
+
+.pass-status-badge.approved {
+    border-color: #8fc9a3;
+    background: #f0faf2;
+    color: var(--green)
+}
+
+.pass-status-badge.not-requested {
+    border-color: var(--border-strong);
+    background: var(--bg-cream);
     color: var(--text-secondary)
+}
+
+.modal .pass-disclaimer {
+    margin-top: 13px;
+    color: var(--text-muted);
+    font-size: .62rem;
+    line-height: 1.55
 }
 
 .success-illustration {
@@ -2264,11 +2417,6 @@ main {
 
     .role-switcher small {
         display: none
-    }
-
-    .ticket-pass {
-        align-items: flex-start;
-        flex-direction: column
     }
 
     .create-form {

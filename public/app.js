@@ -117,6 +117,39 @@ function renderClubs(){
   const query=($('#club-search')?.value||'').toLowerCase();
   $('#club-grid').innerHTML=clubs.filter(c=>`${c.name} ${c.type}`.toLowerCase().includes(query)).map(club=>`<article class="club-card"><div class="club-top"><span class="club-logo">${club.short}</span><button class="club-follow">Follow +</button></div><h3>${club.name}</h3><p>${club.description}</p><footer><span>${club.type}</span><span>${club.members}</span></footer></article>`).join('');
 }
+function ticketQrSvg(passCode){
+  const size=25;
+  const reserved=(x,y)=>[[0,0],[size-7,0],[0,size-7]].some(([left,top])=>x>=left-1&&x<left+8&&y>=top-1&&y<top+8);
+  const finder=(x,y,left,top)=>x>=left&&x<left+7&&y>=top&&y<top+7&&(
+    x===left||x===left+6||y===top||y===top+6||(x>=left+2&&x<=left+4&&y>=top+2&&y<=top+4)
+  );
+  let seed=Array.from(passCode).reduce((hash,char)=>Math.imul(hash^char.charCodeAt(0),16777619)>>>0,2166136261);
+  const modules=[];
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      if(finder(x,y,0,0)||finder(x,y,size-7,0)||finder(x,y,0,size-7)){
+        modules.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+      }else if(!reserved(x,y)){
+        seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+        if((seed>>>0)&1)modules.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+      }
+    }
+  }
+  return `<svg class="pass-qr" viewBox="-2 -2 29 29" role="img" aria-label="QR pattern for pass ${passCode}" shape-rendering="crispEdges"><rect x="-2" y="-2" width="29" height="29" fill="#fff"/><g fill="#4a2e35">${modules.join('')}</g></svg>`;
+}
+async function copyTicketPassCode(button){
+  const status=$('.pass-copy-status',button.closest('.pass-qr-card'));
+  if(!navigator.clipboard?.writeText){
+    status.textContent='Clipboard access is unavailable. Please copy the pass code manually.';
+    return;
+  }
+  try{
+    await navigator.clipboard.writeText(button.dataset.passCode);
+    status.textContent='Pass code copied.';
+  }catch{
+    status.textContent='Could not copy the pass code. Please copy it manually.';
+  }
+}
 function openEventModal(id){
   const event=eventById(id); if(!event)return;
   $('#modal-content').innerHTML=`<div class="modal-event-image"><img src="${event.image}" alt="${event.title}" /></div><span class="section-kicker">${event.club}</span><h2 id="modal-title">${event.title}</h2><p>${event.description}</p><div class="modal-detail-grid"><div class="detail-box"><span>Date & time</span><strong>${event.date}<br>${event.time}</strong></div><div class="detail-box"><span>Venue</span><strong>${event.venue}</strong></div><div class="detail-box"><span>Schedule fit</span><strong>${event.od?'Overlaps 2 classes · OD available':'No timetable conflict'}</strong></div><div class="detail-box"><span>Availability</span><strong>${event.seats}</strong></div></div><div class="modal-actions"><button class="button button-primary" data-action="register-event" data-event-id="${event.id}">${state.registrations.includes(event.id)?'Registered ✓':'Register & check fit'}</button><button class="button button-secondary" data-action="close-modal">Maybe later</button></div>`;
@@ -124,7 +157,32 @@ function openEventModal(id){
 }
 function openTicketModal(id){
   const event=eventById(id); if(!event)return;
-  $('#modal-content').innerHTML=`<span class="section-kicker">Digital entry pass</span><h2 id="modal-title">${event.title}</h2><p>Your registration is confirmed. Show this pass at the check-in desk.</p><div class="ticket-pass"><div class="ticket-qr">▦<small>CS-${event.id.slice(0,4).toUpperCase()}</small></div><div><strong>Priya Sharma</strong><span>22CS1042 · Student</span><span>${event.date} · ${event.time.split('–')[0]}</span><span>${event.venue}</span></div></div><div class="modal-actions"><button class="button button-primary" data-action="close-modal">Done</button></div>`;
+  const eventNumber=String(events.indexOf(event)+1);
+  const passCode=`CAMPUS-SYNC-EV${eventNumber}-21CS042-882194`;
+  const eventTime=event.time.replace(/\s*–\s*/,' – ');
+  $('#modal-content').innerHTML=`<section class="digital-pass">
+    <header class="digital-pass-header">
+      <span class="pass-eyebrow">Campus Sync Digital Pass</span>
+      <h2 id="modal-title">${event.title}</h2>
+      <p class="pass-venue">${event.venue}</p>
+    </header>
+    <div class="pass-qr-card">
+      ${ticketQrSvg(passCode)}
+      <div class="pass-code-row"><code>${passCode}</code><button class="pass-copy-button" type="button" data-action="copy-pass" data-pass-code="${passCode}" aria-label="Copy pass code" title="Copy pass code">⧉</button></div>
+      <span class="pass-copy-status" role="status" aria-live="polite"></span>
+    </div>
+    <dl class="pass-attendee-grid">
+      <div><dt>Attendee</dt><dd>Priya Sharma</dd></div>
+      <div><dt>Roll Number</dt><dd>21CS042</dd></div>
+      <div><dt>Department</dt><dd>Computer Science &amp; Engineering</dd></div>
+      <div><dt>Event Time</dt><dd>${event.date}<br>${eventTime}</dd></div>
+    </dl>
+    <div class="pass-status-list">
+      <div class="pass-status-row"><span class="pass-status-icon">⌖</span><span class="pass-status-name">Venue Check-In</span><span class="pass-status-badge pending">Pending Scan at Entrance</span></div>
+      <div class="pass-status-row"><span class="pass-status-icon">✓</span><span class="pass-status-name">On-Duty (OD) Clearance</span><span class="pass-status-badge ${event.od?'approved':'not-requested'}">${event.od?'Approved':'Not Requested'}</span></div>
+    </div>
+    <p class="pass-disclaimer">Present this QR code to the event coordinator at the venue entrance. Each pass is cryptographically tied to your student record.</p>
+  </section>`;
   $('#modal-backdrop').hidden=false;
 }
 function openCreateModal(){
@@ -168,6 +226,9 @@ document.addEventListener('click',event=>{
   const action=event.target.closest('[data-action]')?.dataset.action;
   if(event.target.closest('.mobile-menu')) $('.site-header')?.classList.toggle('menu-open');
   if(action==='close-modal') $('#modal-backdrop').hidden=true;
+  if(action==='copy-pass'){
+    copyTicketPassCode(event.target.closest('[data-pass-code]'));
+  }
   if(action==='open-create') openCreateModal();
   if(action==='register-event') registerEvent(event.target.closest('[data-event-id]').dataset.eventId);
   if(action==='cancel-registration'){
