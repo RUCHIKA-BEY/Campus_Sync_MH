@@ -14,7 +14,7 @@ const clubs = [
   {name:'Women in Tech Campus',short:'WT',members:'156 members',type:'Community & Technology',description:'A welcoming peer network for women and allies building confidence in tech.'},
   {name:'Design Guild',short:'DG',members:'129 members',type:'Design & Product',description:'A studio-like community for thoughtful interfaces, research, and creative problem solving.'}
 ];
-let state = {page:'landing', category:'All', query:'', registrations:['hackgrid','acoustic','rover'], persona:'STUDENT'};
+let state = {page:'landing', category:'All', query:'', registrations:['hackgrid','acoustic','rover'], persona:'STUDENT', timetableView:'week', selectedDayIndex:null};
 const $ = (selector, root=document) => root.querySelector(selector);
 const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
 function eventById(id){return events.find(event=>event.id===id);}
@@ -24,24 +24,62 @@ function positionTimetableBlocks(){
   const style=getComputedStyle(grid);
   const headerHeight=parseFloat(style.getPropertyValue('--timetable-header-height'));
   const hourHeight=parseFloat(style.getPropertyValue('--timetable-hour-height'));
+  if(!Number.isFinite(headerHeight)||!Number.isFinite(hourHeight)||hourHeight<=0)throw new Error('Timetable grid dimensions are invalid.');
   const schedule=[
-    [['09:00',120],['13:00',90]],
-    [['10:00',90],['13:00',120]],
-    [['09:00',150],['14:00',90]],
-    [['11:00',90],['13:00',120]],
-    [['09:00',90],['12:00',120]]
+    [[0,120],[240,90]],
+    [[60,90],[240,120]],
+    [[0,150],[300,90]],
+    [[120,90],[240,120]],
+    [[0,90],[180,120]]
   ];
   $$('.day-col',grid).forEach((day,dayIndex)=>{
     const blocks=$$('.class-block',day);
     const daySchedule=schedule[dayIndex];
     if(!daySchedule||blocks.length!==daySchedule.length)throw new Error('Timetable blocks do not match the configured schedule.');
     blocks.forEach((block,blockIndex)=>{
-      const [start,duration]=daySchedule[blockIndex];
-      const [hours,minutes]=start.split(':').map(Number);
-      const minutesFromStart=(hours-9)*60+minutes;
-      block.style.top=`${headerHeight+(minutesFromStart/60)*hourHeight}px`;
-      block.style.height=`${(duration/60)*hourHeight}px`;
+      const [startMinutes,durationMinutes]=daySchedule[blockIndex];
+      block.style.top=`${headerHeight+(startMinutes/60)*hourHeight}px`;
+      block.style.height=`${(durationMinutes/60)*hourHeight}px`;
     });
+  });
+}
+function renderTimetableView(){
+  const grid=$('.timetable-grid');
+  if(!grid)return;
+  const days=$$('.day-col',grid);
+  if(!days.length)return;
+  if(state.selectedDayIndex===null){
+    state.selectedDayIndex=Math.max(0,days.findIndex(day=>day.classList.contains('today')));
+  }
+  state.selectedDayIndex=Math.min(state.selectedDayIndex,days.length-1);
+  const selectedDay=days[state.selectedDayIndex];
+  grid.classList.toggle('is-day-view',state.timetableView==='day');
+  days.forEach((day,index)=>{
+    const selected=index===state.selectedDayIndex;
+    day.classList.toggle('is-selected-day',selected);
+    day.setAttribute('aria-hidden',String(state.timetableView==='day'&&!selected));
+  });
+  $$('.timetable-toolbar .segmented button').forEach(button=>{
+    const active=button.textContent.trim().toLowerCase()===state.timetableView;
+    button.classList.toggle('is-active',active);
+    button.setAttribute('aria-pressed',String(active));
+  });
+  const dateLabel=$('.week-switcher strong');
+  if(dateLabel){
+    if(!dateLabel.dataset.weekLabel)dateLabel.dataset.weekLabel=dateLabel.textContent.trim();
+    if(state.timetableView==='day'){
+      const heading=$('strong',selectedDay);
+      const weekday=heading.firstChild.textContent.trim();
+      const dayNumber=$('em',heading).textContent.trim();
+      const [month,,,,year]=dateLabel.dataset.weekLabel.split(' ');
+      dateLabel.textContent=`${weekday}, ${month} ${dayNumber}, ${year}`;
+    }else{
+      dateLabel.textContent=dateLabel.dataset.weekLabel;
+    }
+  }
+  $$('.week-switcher button').forEach((button,index)=>{
+    const unit=state.timetableView==='day'?'day':'week';
+    button.setAttribute('aria-label',`${index===0?'Previous':'Next'} ${unit}`);
   });
 }
 function navigate(page){
@@ -115,6 +153,18 @@ function bindDynamicEvents(){
 }
 
 document.addEventListener('click',event=>{
+  const viewButton=event.target.closest('.timetable-toolbar .segmented button');
+  if(viewButton){
+    state.timetableView=viewButton.textContent.trim().toLowerCase();
+    renderTimetableView();
+  }
+  const dayStepButton=event.target.closest('.week-switcher button');
+  if(dayStepButton&&state.timetableView==='day'){
+    const step=$$('.week-switcher button').indexOf(dayStepButton)===0?-1:1;
+    const dayCount=$$('.day-col',$('.timetable-grid')).length;
+    state.selectedDayIndex=Math.max(0,Math.min(dayCount-1,state.selectedDayIndex+step));
+    renderTimetableView();
+  }
   const action=event.target.closest('[data-action]')?.dataset.action;
   if(event.target.closest('.mobile-menu')) $('.site-header')?.classList.toggle('menu-open');
   if(action==='close-modal') $('#modal-backdrop').hidden=true;
@@ -147,5 +197,6 @@ document.addEventListener('submit',event=>{
 $('#modal-backdrop').addEventListener('click',event=>{if(event.target.id==='modal-backdrop')event.currentTarget.hidden=true;});
 window.addEventListener('hashchange',()=>{const page=window.location.hash.replace('#','');if(document.querySelector(`[data-page="${page}"]`))navigate(page);});
 positionTimetableBlocks();
+renderTimetableView();
 renderLandingEvents();renderDiscover();renderRegistrations();renderClubs();bindDynamicEvents();
 const initial=window.location.hash.replace('#','');if(initial&&document.querySelector(`[data-page="${initial}"]`))navigate(initial);

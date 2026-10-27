@@ -1011,6 +1011,15 @@ main {
     position: relative
 }
 
+.timetable-grid.is-day-view {
+    min-width: 0;
+    grid-template-columns: 68px minmax(0, 1fr)
+}
+
+.timetable-grid.is-day-view .day-col:not(.is-selected-day) {
+    display: none
+}
+
 .time-col,
 .day-col {
     height: calc(var(--timetable-header-height) + 8 * var(--timetable-hour-height));
@@ -1045,9 +1054,10 @@ main {
     padding: 0;
     background-image: linear-gradient(
         to bottom,
-        transparent calc(var(--timetable-hour-height) - 1px),
-        rgba(234, 223, 216, .55) var(--timetable-hour-height),
-        transparent calc(var(--timetable-hour-height) + 1px)
+        rgba(234, 223, 216, .55) 0,
+        rgba(234, 223, 216, .55) 1px,
+        transparent 1px,
+        transparent 100%
     );
     background-position: 0 var(--timetable-header-height);
     background-size: 100% var(--timetable-hour-height)
@@ -1081,6 +1091,11 @@ main {
 }
 
 .day-col.today>strong em {
+    background: var(--accent);
+    color: #fff
+}
+
+.day-col.is-selected-day>strong em {
     background: var(--accent);
     color: #fff
 }
