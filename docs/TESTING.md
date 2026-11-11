@@ -39,7 +39,44 @@ npm run test:db
 | Notifications | `dedupe_key` stops duplicates from retried operations |
 | Audit log | UPDATE, DELETE and TRUNCATE blocked, even for the table owner; browser roles hold no such grants |
 
+## Stage 4 results (run 2026-11-11): authentication + RLS
+
+**Database: 60 / 60 passed** (29 schema tests + 31 in `tests/db/auth_rls.test.js`). Each authorization test switches to the real `authenticated`/`anon` role with a simulated JWT, the way Supabase does.
+
+| Master-prompt requirement | Test(s) | Result |
+|---|---|---|
+| Profile initialization on signup | *signup creates a student profile…*, *sanitises bad metadata* | ✔ |
+| Public signup can't request a role | *signup IGNORES a requested role* | ✔ |
+| Student cannot modify their role | *student can edit own personal fields but NOT role…* | ✔ permission denied |
+| Unauthorized user cannot access admin operations | *only an admin can change roles…*, *deactivated admin loses…*, *internal helpers… cannot be called* | ✔ |
+| Student cannot approve an event | *student and DSA cannot change event status directly* | ✔ |
+| Organizer cannot approve own event | *organizer CANNOT approve or publish their own event* | ✔ |
+| Organizer cannot modify another club's event | *organizer can edit own club drafts but not another club's* | ✔ |
+| Student cannot edit another student's timetable | *timetable: private to its owner…* | ✔ |
+| Student cannot read another student's OD request | *students see only their own registrations and OD requests* | ✔ |
+| Direct API requests cannot bypass RLS | every test above runs as the API role; plus *students cannot create registrations, OD or attendance directly* | ✔ |
+| Audit log protected | *audit log: admin can read but not alter* | ✔ |
+| Safe SECURITY DEFINER | *every SECURITY DEFINER function pins search_path* | ✔ |
+
+**Frontend (manual, in-browser at 1280px and 375px):**
+
+| Check | Result |
+|---|---|
+| Sample-data mode unchanged: landing shows 6 events, persona bar works, Timetable reachable | ✔ |
+| Sign in/up show a "backend not connected" note and a clear error | ✔ |
+| No horizontal scroll on login/signup/forgot/landing/discover at 375px | ✔ |
+| Connected mode (fake project URL): supabase-js 2.118.0 loads from CDN; protected pages redirect to Sign in with a message; Admin requires a role | ✔ |
+| Validation: bad email, weak password, mismatched passwords | ✔ clear messages |
+| Duplicate submit blocked; busy label shown; network failure gives a readable error and restores the button | ✔ |
+| Expired email link (`#error_description=…`) shows the message and cleans the URL | ✔ |
+| Demo bar pre-fills `organizer.demo@…` and asks for the password | ✔ |
+| One click → one navigation (old duplicate-listener bug fixed) | ✔ |
+| Auth forms use `method="post"`, so credentials never land in the URL if JS fails | ✔ (found during testing) |
+| `scripts/create-demo-users.mjs` refuses missing keys, a publishable key used as secret, and a weak password | ✔ |
+
 ## Not yet tested (and why)
+
+- **Real sign-up, sign-in, sign-out, session restore and password-reset emails against your Supabase project**, and **`npm run demo:users` against it.** These need your project keys. They're the first thing to check once you complete docs/AUTHENTICATION.md §7.
 
 - **Truly simultaneous venue bookings.** PGlite has one connection, so two transactions can't race. The guarantee comes from PostgreSQL's exclusion constraint, which serialises conflicting inserts. It will be tested against the real Supabase project with two parallel clients in Stage 6.
 - **The real Supabase environment.** These tests use the shim. Applying the migrations to your Supabase project is a manual step (see the README / Stage 3 notes).

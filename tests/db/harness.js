@@ -62,13 +62,37 @@ let counter = 0;
 export async function makeUser(db, role = 'student', extra = {}) {
   counter += 1;
   const email = `user${counter}_${role}@test.campussync.dev`;
-  const { id } = await one(db, 'insert into auth.users (email) values ($1) returning id', [email]);
-  await db.query(
-    `insert into public.profiles (id, role, full_name, email, registration_number)
-     values ($1, $2, $3, $4, $5)`,
-    [id, role, extra.full_name ?? `Test ${role} ${counter}`, email,
-     role === 'student' ? `22TST${String(counter).padStart(4, '0')}` : null]);
+  // Like a real signup: insert into auth.users and let the
+  // on_auth_user_created trigger build the profile.
+  const meta = {
+    full_name: extra.full_name ?? `Test ${role} ${counter}`,
+    ...(role === 'student' ? { registration_number: `22TST${String(counter).padStart(4, '0')}` } : {}),
+  };
+  const { id } = await one(db,
+    'insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id', [email, meta]);
+  // Elevated roles are set the way an operator would: directly, as the
+  // database owner (the tests run as owner unless they switch role).
+  if (role !== 'student') await db.query('update public.profiles set role = $2 where id = $1', [id, role]);
   return id;
+}
+
+// Make `userId` a lead of `clubId` (so an organizer can manage it).
+export async function makeClubLead(db, userId, clubId, membershipRole = 'lead') {
+  await db.query(
+    `insert into public.club_members (club_id, user_id, membership_role) values ($1, $2, $3)`,
+    [clubId, userId, membershipRole]);
+}
+
+// Run `fn` as a logged-in browser user (role `authenticated` + JWT sub),
+// or as a logged-out visitor when userId is null. Must be inside isolated().
+export async function asUser(db, userId, fn) {
+  await db.exec(`set local role ${userId ? 'authenticated' : 'anon'}`);
+  await db.query(`select set_config('request.jwt.claim.sub', $1, true)`, [userId ?? '']);
+  try { return await fn(); }
+  finally {
+    await db.exec('reset role');
+    await db.query(`select set_config('request.jwt.claim.sub', '', true)`);
+  }
 }
 
 export async function refIds(db) {
@@ -91,8 +115,10 @@ export async function makeEvent(db, ids, createdBy, cols = {}) {
     starts_at: '2026-12-01 10:00+05:30', ends_at: '2026-12-01 12:00+05:30',
     registration_opens_at: '2026-11-15 09:00+05:30',
     registration_closes_at: '2026-11-30 23:59+05:30',
-    capacity: 50, status: 'draft', ...cols,
+    capacity: 50, ...cols,
   };
+  // status is omitted for drafts so the column default applies (browser
+  // users are not even allowed to write the status column).
   const keys = Object.keys(base);
   const sql = `insert into public.events (${keys.join(', ')})
                values (${keys.map((_, i) => `$${i + 1}`).join(', ')}) returning id`;

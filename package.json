@@ -4,9 +4,11 @@
   "description": "CampusSync dev tooling only. The frontend in public/ needs no build step.",
   "type": "module",
   "scripts": {
-    "test:db": "node --test \"tests/db/*.test.js\""
+    "test:db": "node --test \"tests/db/*.test.js\"",
+    "demo:users": "node --env-file=.env scripts/create-demo-users.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.12"
+    "@electric-sql/pglite": "0.5.12",
+    "@supabase/supabase-js": "2.118.0"
   }
 }

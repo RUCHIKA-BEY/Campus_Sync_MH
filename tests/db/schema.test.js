@@ -38,34 +38,15 @@ test('RLS is enabled on every public table (deny-by-default)', async () => {
   assert.deepEqual(rows, [], `Tables without RLS: ${rows.map(r => r.relname).join(', ')}`);
 });
 
-test('RLS with no policies: a logged-in user sees nothing and cannot write', async () => {
+test('profiles: constraints hold (unique email / reg. number ignoring case, valid role)', async () => {
   await isolated(db, async () => {
-    const student = await makeUser(db, 'student');
-    await db.exec(`set local role authenticated`);
-    await db.query(`select set_config('request.jwt.claim.sub', $1, true)`, [student]);
-    assert.equal((await one(db, 'select count(*)::int n from public.venues')).n, 0);
-    assert.equal((await one(db, 'select count(*)::int n from public.profiles')).n, 0);
-    // INSERT with no INSERT policy raises an RLS error:
-    await expectFail(db, `insert into public.venues (name, capacity) values ('Hacked Hall', 10)`, [], 'row-level security');
-    // UPDATE with no policy matches zero rows (the rows are invisible),
-    // so the attempted self-promotion to admin changes nothing:
-    const upd = await db.query(`update public.profiles set role = 'admin' where id = $1 returning id`, [student]);
-    assert.equal(upd.rows.length, 0);
-    await db.exec('reset role');
-    assert.equal((await one(db, 'select role from public.profiles where id = $1', [student])).role, 'student');
-  });
-});
-
-// ------------------------------------------------------------- profiles
-test('profiles: default role is student; email & reg. number unique case-insensitively', async () => {
-  await isolated(db, async () => {
-    const { id } = await one(db, `insert into auth.users (email) values ('a@x.dev') returning id`);
-    await db.query(`insert into public.profiles (id, full_name, email, registration_number) values ($1,'Asha K','A@X.dev','22cs0001')`, [id]);
-    assert.equal((await one(db, 'select role from public.profiles where id=$1', [id])).role, 'student');
+    const { id } = await one(db, `insert into auth.users (email, raw_user_meta_data) values ('a@x.dev', '{"full_name":"Asha K","registration_number":"22cs0001"}') returning id`);
+    const p = await one(db, 'select role, registration_number from public.profiles where id=$1', [id]);
+    assert.deepEqual(p, { role: 'student', registration_number: '22CS0001' });
     const { id: id2 } = await one(db, `insert into auth.users (email) values ('a2@x.dev') returning id`);
-    await expectFail(db, `insert into public.profiles (id, full_name, email) values ($1,'Dup','a@x.DEV')`, [id2], 'profiles_email_unique');
-    await expectFail(db, `insert into public.profiles (id, full_name, email, registration_number) values ($1,'Dup','b@x.dev','22CS0001')`, [id2], 'profiles_registration_number_unique');
-    await expectFail(db, `insert into public.profiles (id, full_name, email, role) values ($1,'Bad','c@x.dev','superadmin')`, [id2], 'invalid input value for enum');
+    await expectFail(db, `update public.profiles set email = 'A@X.DEV' where id = $1`, [id2], 'profiles_email_unique');
+    await expectFail(db, `update public.profiles set registration_number = '22cs0001' where id = $1`, [id2], 'profiles_registration_number_unique');
+    await expectFail(db, `update public.profiles set role = 'superadmin' where id = $1`, [id2], 'invalid input value for enum');
   });
 });
 

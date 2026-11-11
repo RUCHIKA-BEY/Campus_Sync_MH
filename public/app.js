@@ -1,3 +1,9 @@
+// app.js is an ES module (loaded with type="module"), so it can import
+// the authentication layer. Sample data below is replaced with database
+// data in Stage 9.
+import { initAuth } from './js/auth.js';
+import { initAuthUI, guardRoute, onPageShown, handleDemoPersona } from './js/auth-ui.js';
+
 const events = [
   {id:'hackgrid',title:'HackGrid 2026: 24h Campus Hackathon',club:'IEEE Student Branch',category:'Hackathons',date:'Oct 24, 2026',time:'10:00 AM – Oct 25, 10:00 AM',venue:'Innovation & Incubation Lab',image:'/assets/event_hackathon_1793037313961.jpg',description:'Build boldly, collaborate with peers, and turn your sharpest ideas into a campus-ready prototype.',seats:'124 spots left',od:true},
   {id:'acoustic',title:'Acoustic Sunset: Autumn Indie Session',club:'Campus Cultural Guild',category:'Music',date:'Oct 29, 2026',time:'5:30 PM – 8:00 PM',venue:'Open Air Amphitheatre',image:'/assets/event_arts_music_1793037314690.jpg',description:'A warm evening of intimate live music, student artists, and a campus sunset worth slowing down for.',seats:'62 spots left',od:false},
@@ -82,13 +88,17 @@ function renderTimetableView(){
     button.setAttribute('aria-label',`${index===0?'Previous':'Next'} ${unit}`);
   });
 }
-function navigate(page){
+function navigate(requestedPage){
+  // The guard may redirect (e.g. to Sign in). This is for user experience
+  // only; the database enforces the real permissions.
+  const page=guardRoute(requestedPage);
   state.page=page;
   $$('.page-view').forEach(view=>view.classList.toggle('is-visible', view.dataset.page===page));
   $$('.nav-link').forEach(link=>link.classList.toggle('is-active', link.dataset.nav===page));
   $('.site-header')?.classList.remove('menu-open');
   window.location.hash=page;
   window.scrollTo({top:0,behavior:'smooth'});
+  onPageShown(page);
 }
 function eventCard(event){
   return `<article class="event-card" data-event-card data-title="${event.title.toLowerCase()}" data-club="${event.club.toLowerCase()}" data-category="${event.category}">
@@ -204,10 +214,17 @@ function setPersona(role,target){
   if(profile) profile.textContent=role==='STUDENT'?'Priya Sharma':role==='ORGANIZER'?'Arjun Patel':role==='DSA'?'Dr. V. Ramanathan':'Campus Administrator';
   navigate(target);
 }
+// Bind each element only once (previously every search keystroke added
+// another listener to the same buttons, so one click ran several times).
+function bindOnce(element,key,handler){
+  if(element.dataset[key])return;
+  element.dataset[key]='1';
+  element.addEventListener('click',handler);
+}
 function bindDynamicEvents(){
-  $$('[data-nav]').forEach(element=>element.addEventListener('click',()=>navigate(element.dataset.nav)));
-  $$('[data-event]').forEach(element=>element.addEventListener('click',()=>openEventModal(element.dataset.event)));
-  $$('[data-ticket]').forEach(element=>element.addEventListener('click',()=>openTicketModal(element.dataset.ticket)));
+  $$('[data-nav]').forEach(element=>bindOnce(element,'boundNav',()=>navigate(element.dataset.nav)));
+  $$('[data-event]').forEach(element=>bindOnce(element,'boundEvent',()=>openEventModal(element.dataset.event)));
+  $$('[data-ticket]').forEach(element=>bindOnce(element,'boundTicket',()=>openTicketModal(element.dataset.ticket)));
 }
 
 document.addEventListener('click',event=>{
@@ -236,7 +253,13 @@ document.addEventListener('click',event=>{
     renderRegistrations();
   }
   const roleButton=event.target.closest('[data-role]');
-  if(roleButton) setPersona(roleButton.dataset.role,roleButton.dataset.target);
+  if(roleButton){
+    // With a connected backend, the bar pre-fills a demo account's email
+    // instead of pretending to switch roles.
+    handleDemoPersona(roleButton.dataset.role).then(handled=>{
+      if(!handled) setPersona(roleButton.dataset.role,roleButton.dataset.target);
+    });
+  }
   if(event.target.closest('.notification-trigger')) $('#notification-drawer').hidden=false;
   if(action==='close-notifications') $('#notification-drawer').hidden=true;
   if(action==='mark-read') $$('.notification').forEach(item=>item.classList.remove('unread'));
@@ -260,4 +283,9 @@ window.addEventListener('hashchange',()=>{const page=window.location.hash.replac
 positionTimetableBlocks();
 renderTimetableView();
 renderLandingEvents();renderDiscover();renderRegistrations();renderClubs();bindDynamicEvents();
+
+// Restore any saved session BEFORE the first route decision, so a
+// refresh on #profile doesn't flash the sign-in page.
+initAuthUI({navigate});
+await initAuth();
 const initial=window.location.hash.replace('#','');if(initial&&document.querySelector(`[data-page="${initial}"]`))navigate(initial);

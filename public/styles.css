@@ -2457,3 +2457,231 @@ main {
         color: var(--accent)
     }
 }
+/* =====================================================================
+   Stage 4: authentication views, profile, toast
+   Uses only the existing palette tokens (:root above).
+   ===================================================================== */
+[hidden] {
+    display: none !important
+}
+
+.auth-layout {
+    display: grid;
+    justify-items: center
+}
+
+.auth-card {
+    width: min(100%, 460px);
+    padding: 30px
+}
+
+.auth-card-wide {
+    width: min(100%, 600px)
+}
+
+.auth-card h1 {
+    font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+    letter-spacing: -.03em
+}
+
+.auth-lead {
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-size: .82rem
+}
+
+.auth-config-note {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--orange-bg);
+    color: var(--text-primary);
+    font-size: .75rem
+}
+
+.auth-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 22px
+}
+
+.auth-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: .72rem;
+    font-weight: 700
+}
+
+.auth-form input,
+.auth-form select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 1rem
+}
+
+.auth-form input:focus,
+.auth-form select:focus {
+    outline: none;
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px rgba(74, 46, 53, .12);
+    background: #fff
+}
+
+.auth-form input[readonly] {
+    background: var(--bg-cream);
+    color: var(--text-muted)
+}
+
+.auth-form .button {
+    margin-top: 4px;
+    min-height: 46px;
+    font-size: .85rem
+}
+
+.auth-form .button:disabled {
+    opacity: .65;
+    cursor: progress;
+    transform: none
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px
+}
+
+.field-note {
+    font-weight: 500;
+    color: var(--text-muted)
+}
+
+.form-hint {
+    margin-top: -6px;
+    color: var(--text-muted);
+    font-size: .7rem
+}
+
+.form-status {
+    min-height: 1.1em;
+    font-size: .76rem;
+    font-weight: 600;
+    color: var(--text-secondary)
+}
+
+.form-status:empty {
+    min-height: 0
+}
+
+.form-status.is-error {
+    color: var(--accent-active)
+}
+
+.form-status.is-error::before {
+    content: "⚠ "
+}
+
+.form-status.is-success {
+    color: var(--green)
+}
+
+.form-status.is-success::before {
+    content: "✓ "
+}
+
+.auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: .74rem
+}
+
+.auth-links .text-button {
+    font-size: .74rem
+}
+
+.profile-side {
+    display: grid;
+    gap: 20px;
+    align-content: start
+}
+
+.interest-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px
+}
+
+.interest-chip {
+    border: 1px solid var(--border-strong);
+    border-radius: 99px;
+    background: var(--mauve);
+    color: var(--text-primary);
+    padding: 7px 13px;
+    font-size: .74rem;
+    font-weight: 700
+}
+
+.interest-chip[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff
+}
+
+.interest-chip[aria-pressed="true"]::before {
+    content: "✓ "
+}
+
+.interest-chip:disabled {
+    opacity: .6
+}
+
+.app-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 76px;
+    z-index: 90;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: 11px 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+    font-size: .8rem;
+    font-weight: 600
+}
+
+@media(max-width:760px) {
+    .auth-card {
+        padding: 22px 18px
+    }
+
+    .form-row {
+        grid-template-columns: 1fr
+    }
+
+    .auth-links {
+        flex-direction: column
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-toast {
+        transition: none
+    }
+}
