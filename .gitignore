@@ -1,0 +1,16 @@
+# Secrets: never commit real keys or passwords
+.env
+.env.*
+!.env.example
+
+# Node tooling (tests only)
+node_modules/
+
+# Supabase CLI local state (if you install the CLI later)
+supabase/.temp/
+supabase/.branches/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

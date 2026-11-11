@@ -1,0 +1,12 @@
+{
+  "name": "campussync",
+  "private": true,
+  "description": "CampusSync dev tooling only. The frontend in public/ needs no build step.",
+  "type": "module",
+  "scripts": {
+    "test:db": "node --test \"tests/db/*.test.js\""
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.12"
+  }
+}
