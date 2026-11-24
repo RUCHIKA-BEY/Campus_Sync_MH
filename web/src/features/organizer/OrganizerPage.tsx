@@ -1,6 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban } from 'lucide-react';
 import { ReasonDialog } from '../../components/ReasonDialog';
+import { RegistrantsDialog } from './RegistrantsDialog';
+import { SchedulingWarnings } from '../events/SchedulingWarnings';
+import { useDepartments } from '../../lib/queries';
 import { useCancelEvent, useCompleteEvent, usePublishEvent, useReopenEvent, useSubmitEvent } from '../../lib/workflow';
 import { useAuth } from '../../auth/AuthProvider';
 import { Badge, Button, Card, EmptyState, Field, FormStatus, Input, PageHeader, Select, Skeleton } from '../../components/ui';
@@ -95,6 +98,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showRegistrants, setShowRegistrants] = useState(false);
   const editable = EDITABLE.includes(event.status);
   const ended = Date.parse(event.ends_at) <= Date.now();
   // Run an action and report the database's answer in plain language.
@@ -117,8 +121,12 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
         </p>
         {event.review_note && <p className="mt-2 rounded-xl bg-peach px-3 py-2 text-xs text-terracotta-deep"><strong>DSA note:</strong> {event.review_note}</p>}
         {event.status === 'cancelled' && event.cancellation_reason && <p className="mt-2 text-xs text-plum-soft">Cancelled: {event.cancellation_reason}</p>}
+        {['draft', 'submitted', 'under_review', 'changes_requested', 'approved'].includes(event.status) && event.venue && (
+          <div className="mt-2"><SchedulingWarnings eventId={event.id} scope={event.scope} /></div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        {['published', 'completed', 'cancelled'].includes(event.status) && <Button variant="secondary" size="sm" onClick={() => setShowRegistrants(true)}><Users className="size-4" />Registrants</Button>}
         {editable && <Button variant="secondary" size="sm" onClick={onEdit}><FilePen className="size-4" />Edit</Button>}
         {event.status === 'draft' && (confirm ? (
           <>
@@ -146,6 +154,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
           <Button variant="ghost" size="sm" onClick={() => setCancelling(true)} className="text-terracotta-deep"><Ban className="size-4" />Cancel event</Button>
         )}
       </div>
+      {showRegistrants && <RegistrantsDialog eventId={event.id} title={event.title} capacity={event.capacity} onClose={() => setShowRegistrants(false)} />}
       {cancelling && (
         <ReasonDialog title={`Cancel “${event.title}”?`} label="Reason (shown to registered students)" confirmLabel="Cancel event"
           description={event.status === 'published' ? 'Everyone registered will be notified.' : undefined}
@@ -162,7 +171,9 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
 function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs: ManagedClub[]; onClose: () => void }) {
   const categories = useCategories();
   const venues = useVenues();
+  const departments = useDepartments();
   const save = useSaveDraft();
+  const [audience, setAudience] = useState<string[]>(() => (event?.audiences ?? []).map(a => a.department_id).filter((d): d is string => Boolean(d)));
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [f, setF] = useState({
@@ -189,7 +200,7 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
     };
     const problem = validateDraft(input, venue?.capacity);
     if (problem) return setError(problem);
-    save.mutate({ id: event?.id, input }, {
+    save.mutate({ id: event?.id, input, audienceDeptIds: f.scope === 'club' ? [] : audience }, {
       onSuccess: () => { toast(event ? 'Draft updated.' : 'Draft saved.', 'success'); onClose(); },
       onError: err => setError(friendlyError(err)),
     });
@@ -232,6 +243,20 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
           <Field label="Registration opens"><Input type="datetime-local" value={f.opens} onChange={set('opens')} /></Field>
           <Field label="Registration closes"><Input type="datetime-local" value={f.closes} onChange={set('closes')} /></Field>
         </div>
+        {f.scope !== 'club' && (
+          <fieldset className="grid gap-2">
+            <legend className="text-[13px] font-semibold text-plum-soft">Target departments <span className="font-normal text-plum-muted">(none selected = all students; used for clash warnings)</span></legend>
+            <div className="flex flex-wrap gap-2">
+              {departments.data?.map(d => {
+                const on = audience.includes(d.id);
+                return (
+                  <button key={d.id} type="button" aria-pressed={on} onClick={() => setAudience(a => on ? a.filter(x => x !== d.id) : [...a, d.id])}
+                          className={`rounded-full border px-3 py-1 text-xs font-bold transition ${on ? 'border-plum bg-plum text-ivory' : 'border-mauve-strong bg-mauve text-plum'}`}>{d.code}</button>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         <label className="flex items-center gap-3 rounded-xl border border-line bg-cream px-4 py-3 text-sm font-semibold">
           <input type="checkbox" checked={f.od_eligible} onChange={e => setF(p => ({ ...p, od_eligible: e.target.checked }))} className="size-4 accent-terracotta" />
           On-Duty eligible (students may request OD if it clashes with classes)

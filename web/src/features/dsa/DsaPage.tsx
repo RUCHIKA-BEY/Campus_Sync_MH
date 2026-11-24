@@ -12,6 +12,7 @@ import { longDate, shortDateTime } from '../../lib/events';
 import { requireSupabase, supabase } from '../../lib/supabase';
 import { STATUS_LABEL, type EventStatus } from '../../lib/organizer';
 import { usePublishEvent, useReviewEvent, useStartReview, type Decision } from '../../lib/workflow';
+import { SchedulingWarnings } from '../events/SchedulingWarnings';
 
 interface Proposal {
   id: string; title: string; description: string; status: EventStatus; scope: string; event_type: string;
@@ -194,8 +195,9 @@ function ReviewDialog({ e, onClose }: { e: Proposal; onClose: () => void }) {
         <div><p className="text-xs font-semibold text-plum-muted">Description</p><p className="mt-1 text-sm whitespace-pre-line text-plum-soft">{e.description}</p></div>
         {overCapacity && <FormStatus kind="error">Capacity is larger than the venue holds. Approval will be refused.</FormStatus>}
         <p className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-plum-soft">
-          ✓ No other proposal holds this venue at an overlapping time (the database guarantees this). Campus-wide audience clash warnings arrive in Stage 6.
+          ✓ No other proposal holds this venue at an overlapping time (the database guarantees this, and re-checks on approval).
         </p>
+        <SchedulingWarnings eventId={e.id} scope={e.scope} />
         <label className="grid gap-1.5 text-[13px] font-semibold text-plum-soft">
           Note to the organizer <span className="font-normal text-plum-muted">(required to reject or request changes)</span>
           <textarea value={note} onChange={ev => setNote(ev.target.value)} rows={3} maxLength={1000}

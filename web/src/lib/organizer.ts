@@ -26,6 +26,7 @@ export interface OrgEvent {
   venue_id: string | null; starts_at: string; ends_at: string; registration_opens_at: string; registration_closes_at: string;
   capacity: number; od_eligible: boolean; status: EventStatus; review_note: string | null; cancellation_reason: string | null;
   venue: { name: string } | null; category: { name: string } | null;
+  audiences: Array<{ department_id: string | null; academic_year: number | null }>;
 }
 
 /** Writable columns only: exactly what the database GRANTs to organizers. */
@@ -67,7 +68,7 @@ export function useClubEvents(clubIds: string[]) {
     enabled: Boolean(supabase && clubIds.length),
     queryFn: async (): Promise<OrgEvent[]> => {
       const { data, error } = await requireSupabase().from('events')
-        .select('id, club_id, title, description, category_id, event_type, scope, venue_id, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, status, review_note, cancellation_reason, venue:venues(name), category:categories(name)')
+        .select('id, club_id, title, description, category_id, event_type, scope, venue_id, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, status, review_note, cancellation_reason, venue:venues(name), category:categories(name), audiences:event_audiences(department_id, academic_year)')
         .in('club_id', clubIds).order('starts_at');
       if (error) throw error;
       return data as unknown as OrgEvent[];
@@ -79,14 +80,26 @@ export function useSaveDraft() {
   const { session } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id?: string; input: DraftInput }) => {
+    mutationFn: async ({ id, input, audienceDeptIds }: { id?: string; input: DraftInput; audienceDeptIds: string[] }) => {
       const db = requireSupabase();
       // status is never sent: new rows default to 'draft', and organizers have
       // no privilege on that column at all.
-      const { error } = id
-        ? await db.from('events').update(input).eq('id', id)
-        : await db.from('events').insert({ ...input, created_by: session!.user.id });
-      if (error) throw error;
+      let eventId = id;
+      if (id) {
+        const { error } = await db.from('events').update(input).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await db.from('events').insert({ ...input, created_by: session!.user.id }).select('id').single();
+        if (error) throw error;
+        eventId = data.id as string;
+      }
+      // Target audience (used by campus-wide clash warnings). No rows = everyone.
+      const del = await db.from('event_audiences').delete().eq('event_id', eventId!);
+      if (del.error) throw del.error;
+      if (audienceDeptIds.length) {
+        const ins = await db.from('event_audiences').insert(audienceDeptIds.map(d => ({ event_id: eventId, department_id: d })));
+        if (ins.error) throw ins.error;
+      }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['club-events'] }),
   });

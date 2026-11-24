@@ -10,6 +10,9 @@ import { canRegister, longDate, registrationStatus, seatsLeft, shortDateTime, st
 import { useEventById } from '../../lib/publicEvents';
 import { Skeleton } from '../../components/ui';
 import { useDemoRegistrations } from '../../lib/demo';
+import { friendlyError } from '../../lib/errors';
+import { CONFLICT_LABEL, useCancelRegistration, useMyRegistrations, useRegister } from '../../lib/registration';
+import { CanIAttend } from './CanIAttend';
 import { BookmarkButton, OdBadge, SampleNotice, StatusBadge, useNow } from './eventUi';
 import { TicketDialog } from './TicketDialog';
 
@@ -17,7 +20,11 @@ export function EventDetailPage() {
   const { id } = useParams();
   const { event, isLoading } = useEventById(id);
   const now = useNow();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+  const myRegs = useMyRegistrations();
+  const register = useRegister();
+  const cancelReg = useCancelRegistration();
+  const [freshPass, setFreshPass] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
@@ -40,7 +47,11 @@ export function EventDetailPage() {
   }
 
   const status = registrationStatus(event, now);
-  const registration = demo.find(event.id);
+  const registration = demo.find(event.id);                       // sample events (on this device)
+  const realReg = myRegs.data?.find(r => r.event.id === event.id); // real events (database)
+  const realPass = realReg?.pass_code ?? freshPass;
+  const isStudent = profile?.role === 'student';
+  const canCancelReal = Date.parse(event.registrationClosesAt) > now.getTime();
   // Seat counts are unknown for real events until registration exists (Stage 6).
   const fill = event.registeredCount === null ? null : Math.min(100, Math.round((event.registeredCount / event.capacity) * 100));
   const left = seatsLeft(event);
@@ -54,6 +65,24 @@ export function EventDetailPage() {
     demo.register(event.id);
     toast('Demo registration saved on this device.', 'success');
     setTicketOpen(true);
+  };
+
+  const onRegisterReal = () => {
+    if (!session) {
+      toast('Sign in to register for events.', 'info');
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    // The database re-checks everything (status, window, duplicates,
+    // capacity with a row lock, timetable) and returns the conflict result.
+    register.mutate(event.id, {
+      onSuccess: r => {
+        setFreshPass(r.pass_code);
+        toast(`You’re registered. ${CONFLICT_LABEL[r.conflict.status]}.`, 'success');
+        setTicketOpen(true);
+      },
+      onError: e => toast(friendlyError(e), 'error'),
+    });
   };
 
   return (
@@ -110,7 +139,7 @@ export function EventDetailPage() {
           {event.odEligible && (
             <section className="mt-6 flex gap-3 rounded-2xl border border-terracotta/20 bg-peach p-4 text-sm">
               <BadgeCheck className="size-5 shrink-0 text-terracotta" aria-hidden />
-              <p><strong>On-Duty eligible.</strong> If this event clashes with your classes, you’ll be able to request OD after registering, once live registration is connected.</p>
+              <p><strong>On-Duty eligible.</strong> If this event clashes with your classes, you can request On-Duty after registering{event.isSample ? '' : ' (the request form arrives in the next stage)'}.</p>
             </section>
           )}
           {event.lifecycle === 'cancelled' && (
@@ -131,36 +160,57 @@ export function EventDetailPage() {
             </>)}
             <p className="mt-2 text-sm text-plum-soft">{statusLabel(status, event)}</p>
 
+            {!event.isSample && session && isStudent && event.lifecycle === 'published' && Date.parse(event.endsAt) > now.getTime() && (
+              <div className="mt-4"><p className="mb-2 text-xs font-bold tracking-wide text-plum-muted uppercase">Can I attend?</p><CanIAttend eventId={event.id} /></div>
+            )}
+
             <div className="mt-5 grid gap-2.5">
-              {registration ? (
+              {event.isSample ? (
+                registration ? (
+                  <>
+                    <p className="rounded-xl bg-sage-bg px-3 py-2 text-sm font-semibold text-sage">✓ You’re registered (demo)</p>
+                    <Button onClick={() => setTicketOpen(true)} size="lg"><Ticket className="size-4" />View ticket</Button>
+                    {confirmCancel ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button variant="secondary" onClick={() => setConfirmCancel(false)}>Keep</Button>
+                        <Button variant="plum" onClick={() => { demo.cancel(event.id); setConfirmCancel(false); toast('Demo registration cancelled.'); }}>Yes, cancel</Button>
+                      </div>
+                    ) : <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>}
+                  </>
+                ) : canRegister(status) ? <Button size="lg" onClick={onRegister}>Register now (demo)</Button>
+                  : <Button size="lg" disabled>{statusLabel(status, event)}</Button>
+              ) : realPass ? (
                 <>
-                  <p className="rounded-xl bg-sage-bg px-3 py-2 text-sm font-semibold text-sage">✓ You’re registered (demo)</p>
+                  <p className="rounded-xl bg-sage-bg px-3 py-2 text-sm font-semibold text-sage">✓ You’re registered</p>
                   <Button onClick={() => setTicketOpen(true)} size="lg"><Ticket className="size-4" />View ticket</Button>
-                  {confirmCancel ? (
+                  {canCancelReal && (confirmCancel ? (
                     <div className="grid grid-cols-2 gap-2">
                       <Button variant="secondary" onClick={() => setConfirmCancel(false)}>Keep</Button>
-                      <Button variant="plum" onClick={() => { demo.cancel(event.id); setConfirmCancel(false); toast('Demo registration cancelled.'); }}>Yes, cancel</Button>
+                      <Button variant="plum" loading={cancelReg.isPending} onClick={() => cancelReg.mutate(event.id, {
+                        onSuccess: () => { setConfirmCancel(false); setFreshPass(null); toast('Registration cancelled. Your seat was released.'); },
+                        onError: e => toast(friendlyError(e), 'error'),
+                      })}>Yes, cancel</Button>
                     </div>
-                  ) : (
-                    <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>
-                  )}
+                  ) : <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>)}
                 </>
-              ) : canRegister(status) && !event.isSample ? (
-                // Real event: registration with the timetable clash check is the next stage.
-                <Button size="lg" disabled>Registration opens soon</Button>
-              ) : canRegister(status) ? (
-                <Button size="lg" onClick={onRegister}>Register now</Button>
-              ) : (
+              ) : !canRegister(status) ? (
                 // Never show an action that can't succeed.
                 <Button size="lg" disabled>{statusLabel(status, event)}</Button>
+              ) : session && !isStudent ? (
+                <Button size="lg" disabled>Only students register for events</Button>
+              ) : (
+                <Button size="lg" onClick={onRegisterReal} loading={register.isPending} loadingLabel="Registering…">
+                  {session ? 'Register now' : 'Sign in to register'}
+                </Button>
               )}
             </div>
-            <p className="mt-4 text-xs text-plum-muted">Timetable clash checking runs here once your timetable and live registration are connected.</p>
+            {event.isSample && <p className="mt-4 text-xs text-plum-muted">Sample event: no timetable check. Real events show your “Can I attend?” result here.</p>}
           </Card>
         </aside>
       </div>
 
-      {registration && <TicketDialog event={event} registration={registration} open={ticketOpen} onOpenChange={setTicketOpen} />}
+      {event.isSample && registration && <TicketDialog event={event} registration={registration} open={ticketOpen} onOpenChange={setTicketOpen} />}
+      {!event.isSample && realPass && <TicketDialog demo={false} event={event} registration={{ passCode: realPass }} open={ticketOpen} onOpenChange={setTicketOpen} />}
     </div>
   );
 }

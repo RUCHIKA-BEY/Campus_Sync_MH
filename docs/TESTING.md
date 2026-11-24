@@ -111,6 +111,25 @@ Fixes:
 
 **Not yet verified:** the signed-in workflow on the live project. That needs migration 8 pushed and a run-through with the demo accounts.
 
+## Stage 6 results (scheduling & registration)
+
+**Database: 101 / 101 passed** (23 new: 22 in `tests/db/registration.test.js`, plus 1 audience test). Test events are set in a 2030 test term, so they never depend on the real semester calendar.
+
+| Requirement | Result |
+|---|---|
+| Conflict cases 1–9 from the brief (no overlap, inside, contains, partial start/end, multiple, adjacent, missing timetable, changed timing) | ✔ |
+| Midnight-crossing events, UTC-entered events, other weekdays, dates outside any term | ✔ |
+| Conflict check only for the caller's own timetable and published events | ✔ |
+| Successful registration with snapshot, pass code and notification; duplicate refused | ✔ |
+| Last seat goes to one student only; registration refused after the deadline, before opening, for unpublished or cancelled events | ✔ |
+| Only students register; the full-conflict policy follows the D8 setting | ✔ |
+| Cancellation frees the seat, withdraws OD, allows re-registering; refused after the deadline | ✔ |
+| Seat counts public but anonymous; registrant list limited to the club's organizers, DSA and admins | ✔ |
+| Campus-wide warnings: shared audience flagged; other department and club-scope ignored; "all students" flagged | ✔ |
+| Audiences editable on drafts only | ✔ |
+
+**Not tested:** truly simultaneous last-seat requests. PGlite has one connection; the guarantee comes from the row lock. The signed-in flows on the live project also need migration 9 pushed and a walkthrough.
+
 ## Not yet tested (and why)
 
 - **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.

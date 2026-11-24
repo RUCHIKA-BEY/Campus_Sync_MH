@@ -55,9 +55,11 @@ web/
 | Interests on Profile; "For you" on Discover | **Real interests**, matched against sample events with a transparent rule ("Because you picked …") |
 | Clubs directory, Follow / Unfollow | **Real** (`clubs`, `club_follows`) |
 | Role-aware navigation (Organizer / DSA / Admin links) | **Real role** from `profiles`; links hidden from other roles; RLS enforces |
-| Events on Home / Discover / detail | **Sample data**, clearly labelled. Becomes real with Stages 5–6 |
+| Events on Home / Discover / detail | **Real** published events with live seat counts; labelled samples only while nothing is published |
 | Registration status (open, closing soon, full, closed, ended) | **Real logic** computed from dates; runs unchanged on DB rows later |
-| Bookmarks, demo registration, QR ticket | **On this device** (localStorage), labelled as demo. Real tables in Stage 6, verified check-in in Stage 7 |
+| Registration, cancellation, "Can I attend?", QR pass (real events) | **Real** (`register_for_event`, `check_timetable_conflict`, `cancel_registration`). Verified check-in is Stage 7 |
+| Bookmarks; demo registration for sample events | On this device (localStorage), labelled |
+| Organizer registrants list, campus-wide clash warnings, target departments | **Real** (`get_event_registrants`, `event_scheduling_warnings`, `event_audiences`) |
 | Notifications | Honest empty panel, with no fake count |
 | Timetable | **Real**: add, edit and delete weekly classes (`timetable_slots`). The database rejects overlapping classes. Private to the student |
 | Organizer console | **Real**: managed clubs, create, edit and delete **drafts** (`events`; column GRANTs block status changes). *Submit for approval* is disabled until Stage 5 |

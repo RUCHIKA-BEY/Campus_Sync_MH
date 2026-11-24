@@ -82,7 +82,7 @@ Access control must be enforced by the backend and database policies, not merely
 | Organizer drafts, club leads, admin users and audit log | ✅ Built |
 | Event discovery UI, filters, bookmarks, QR pass | ✅ Built, using **sample events** until Stages 5–6 |
 | Proposal submission, DSA approval, publication, cancellation | ✅ Built (Stage 5), 15 workflow tests |
-| Timetable-conflict-aware registration, venue collision checks | ⏳ Stage 6 |
+| Timetable conflict detection, transaction-safe registration, seat counts, campus-wide clash warnings | ✅ Built (Stage 6), 23 tests |
 | OD requests, verified QR attendance | ⏳ Stage 7 |
 | Notifications, analytics dashboards | ⏳ Stage 8 |
 

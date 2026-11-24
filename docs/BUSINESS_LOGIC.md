@@ -39,13 +39,85 @@ Written by the functions through `notify()` with a **dedupe key** (e.g. `event:<
 
 ## 2. Discover: real vs. sample events
 
-- Discover, Home, Clubs and event pages read **published, completed and cancelled-after-publication** events from the database. The query filters on status explicitly, because a signed-in organizer or DSA can *see* more rows through RLS, and Discover must still show only public events.
-- If **no event has been published yet**, the app falls back to clearly labelled sample events.
-- Real events show "Registration opens soon". Registration, with the timetable clash check and capacity safety, is Stage 6. Until then no seat count is shown for real events, because there are no registrations to count.
-- "Featured" for real events follows a transparent rule: **university-wide events**.
+- Discover, Home, Clubs and event pages read **published, completed and cancelled-after-publication** events. The query filters on status explicitly, because a signed-in organizer or DSA can *see* more rows through RLS, and Discover must still show only public events.
+- **Live seat counts** come from `get_event_seats()`: numbers only, never who registered.
+- If no event has been published yet, the app falls back to clearly labelled sample events.
+- "Featured" follows a transparent rule: **university-wide events**.
 
-## 3. Coming in Stage 6
+## 3. Timetable conflict detection (Stage 6, `_timetable_conflict`)
 
-- Timetable conflict detection (none / partial / full / timetable not configured), using half-open intervals.
-- Transaction-safe registration and cancellation with capacity locking.
-- Campus-wide scheduling warnings for the DSA (overlapping audiences across venues).
+**One authoritative implementation, in the database.** The "Can I attend?" panel calls it through `check_timetable_conflict(event)`, and registration calls the same function again, so the browser can never fake a result.
+
+### The overlap rule
+
+Two time intervals overlap when
+
+```
+event_start < class_end   AND   event_end > class_start
+```
+
+Intervals are **half-open** `[start, end)`: an event from 11:00–12:00 does **not** clash with a class from 09:00–11:00, because 11:00 isn't inside `[09:00, 11:00)`.
+
+### Algorithm
+
+1. Read the campus timezone (`Asia/Kolkata`) from `platform_settings`.
+2. For **each campus calendar day** the event touches, take the slice of the event on that day. This handles events that cross midnight.
+3. Find the academic term containing that day. If there's no term, or the student has no classes in it, mark the timetable **incomplete**.
+4. For that weekday, turn each weekly class into real timestamps for that date in campus time, and keep the ones that pass the overlap rule.
+5. Overlap minutes = `min(event_end, class_end) − max(event_start, class_start)`, summed. Classes can't overlap each other (an exclusion constraint), so no minute is counted twice.
+6. Status:
+   - **full_conflict**: overlap ≥ event duration;
+   - **partial_conflict**: overlap > 0;
+   - **no_conflict**: no overlap and the timetable covers every event day;
+   - **timetable_not_configured**: otherwise. We never call a student "free" just because nothing was entered.
+
+The result includes the clashing classes with exact overlap times, total overlap, event duration, free minutes, and whether the event is OD-eligible.
+
+### Worked examples (class: Data Structures, Monday 09:00–11:00)
+
+| Event (Monday) | Overlap | Result |
+|---|---|---|
+| 12:00–13:00 | none | no_conflict |
+| 09:30–10:30 | 60 of 60 min | full_conflict |
+| 08:00–12:00 | 120 of 240 min | partial_conflict (120 min free) |
+| 10:00–12:00 | 10:00–11:00 = 60 min | partial_conflict |
+| 11:00–12:00 | touches, doesn't overlap | no_conflict |
+| any time, no timetable entered | — | timetable_not_configured |
+| 10:30–11:30, with OS also 11:00–12:00 | 30 + 30 = 60 of 60 | full_conflict (two classes) |
+| Mon 23:00 → Tue 01:00, Night Lab Tue 00:30–02:00 | 30 min on Tuesday | partial_conflict |
+
+All of these are automated tests in `tests/db/registration.test.js`.
+
+## 4. Registration (`register_for_event`, `cancel_registration`)
+
+Checks, in order:
+1. A signed-in **student**.
+2. The event is **published**, and registration is **open now** (between opens and closes).
+3. **No duplicate** active registration.
+4. **Seats left**, counted under a lock.
+5. The **timetable result**. A full clash on a non-OD event is allowed or refused by the platform setting `allow_registration_on_full_conflict` (decision D8: allowed, with the result recorded).
+
+The registration then stores a **snapshot** of the conflict result, gets a random 32-character pass code, and the student is notified.
+
+**Why capacity can't be exceeded:** the function first locks the event row (`SELECT … FOR UPDATE`). If two students try for the last seat at the same moment, the second request waits until the first transaction finishes, then counts again, sees no seats left, and is refused. A JavaScript check couldn't do this, because both browsers would see "1 seat left".
+
+**Cancelling** is allowed until the registration deadline (decision D9). It frees the seat and withdraws any pending or approved OD request for that registration.
+
+## 5. Venue clashes vs. campus-wide warnings
+
+| | Venue clash | Campus-wide warning |
+|---|---|---|
+| What | Same venue, overlapping time | Different venues, overlapping time, **shared audience** |
+| Effect | **Blocked** by the database (exclusion constraint) | **Advice** shown to organizers and the DSA (`event_scheduling_warnings`) |
+| When | On submit and again on approval | Live while drafting and reviewing |
+
+A warning appears when both events are at least department-scope (configurable: `campus_warning_min_scope`) and their audiences intersect. Audience comes from `event_audiences`; no rows means "all students", and a NULL department or year means "any". Organizers set target departments when drafting.
+
+## 6. Organizer registrant lists
+
+`get_event_registrants(event)` lets a club's organizers, the DSA and admins see who registered: name, registration number, department, year, and the conflict snapshot. Email and phone are never exposed. Profiles otherwise stay private (RLS).
+
+## 7. Coming next (Stage 7)
+
+- OD requests from the student's registration (using the stored conflict snapshot), with review by the configured OD reviewer.
+- Verified QR check-in: the organizer scans a pass during an open attendance session, plus manual attendance.

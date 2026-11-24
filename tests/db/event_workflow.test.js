@@ -259,3 +259,22 @@ test('complete only after the event has ended', async () => {
     assert.equal(await status(past), 'completed');
   });
 });
+
+// ============================================================ audiences
+test('event audiences: managers edit them on drafts only; locked after submission', async () => {
+  await isolated(db, async () => {
+    const { org } = await team();
+    const cse = (await one(db, `select id from public.departments where code='CSE'`)).id;
+    const ev = await makeEvent(db, ids, org, future(10, { scope: 'department' }));
+    await asUser(db, org, async () => {
+      await db.query('insert into public.event_audiences (event_id, department_id) values ($1,$2)', [ev, cse]);
+      assert.equal((await db.query('delete from public.event_audiences where event_id=$1 returning id', [ev])).rows.length, 1);
+      await db.query('insert into public.event_audiences (event_id, department_id) values ($1,$2)', [ev, cse]);
+      await db.query(call('submit_event', 1), [ev]);
+      await expectFail(db, 'insert into public.event_audiences (event_id, academic_year) values ($1, 2)', [ev], 'row-level security');
+      assert.equal((await db.query('delete from public.event_audiences where event_id=$1 returning id', [ev])).rows.length, 0, 'locked after submit');
+    });
+    const student = await makeUser(db);
+    await asUser(db, student, () => expectFail(db, 'insert into public.event_audiences (event_id, academic_year) values ($1, 3)', [ev], 'row-level security'));
+  });
+});

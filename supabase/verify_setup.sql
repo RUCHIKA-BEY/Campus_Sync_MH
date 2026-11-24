@@ -3,7 +3,8 @@
 -- Paste into Supabase → SQL Editor → Run. Every row should say ✅.
 --
 -- Rows marked [m7] need migration 20261124000100 (explicit grants);
--- rows marked [m8] need 20261124000200 (event lifecycle, Stage 5).
+-- rows marked [m8] need 20261124000200 (event lifecycle, Stage 5);
+-- rows marked [m9] need 20261124000300 (registration & conflicts, Stage 6).
 -- The last two rows read the Supabase CLI's migration history table
 -- (supabase_migrations.schema_migrations); before you run
 -- `supabase migration repair` they show "no history table yet".
@@ -73,6 +74,14 @@ checks(check_name, expected, actual, passed) as (
      (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname like '\_%'
         and has_function_privilege('authenticated', p.oid, 'EXECUTE')), null),
+  ('[m9] registration & scheduling functions for logged-in users', '5',
+     (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('check_timetable_conflict','register_for_event','cancel_registration','event_scheduling_warnings','get_event_registrants')
+        and has_function_privilege('authenticated', p.oid, 'EXECUTE')), null),
+  ('[m9] visitors can read seat counts (numbers only)', 'true',
+     (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'get_event_seats'), null),
   ('categories (migration data)', '8',  (select count(*)::text from public.categories), null),
   ('platform settings (migration data)', '6', (select count(*)::text from public.platform_settings), null),
   ('departments (seed, at least 1)', '≥ 1', (select count(*)::text from public.departments),
@@ -83,9 +92,9 @@ checks(check_name, expected, actual, passed) as (
      (select count(*) > 0 from public.clubs)),
   ('academic terms (seed, at least 1)', '≥ 1', (select count(*)::text from public.academic_terms),
      (select count(*) > 0 from public.academic_terms)),
-  ('migration history: versions recorded', '8',
+  ('migration history: versions recorded', '9',
      coalesce((select applied_count from history), 'no history table yet'), null),
-  ('migration history: latest version', '20261124000200',
+  ('migration history: latest version', '20261124000300',
      coalesce((select latest_version from history), 'no history table yet'), null)
 )
 select case when coalesce(passed, expected = actual) then '✅' else '❌' end as ok,

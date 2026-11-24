@@ -8,8 +8,10 @@ import { longDate, timeRange, type CampusEvent } from '../../lib/events';
 import type { DemoRegistration } from '../../lib/demo';
 import { Badge } from '../../components/ui';
 
-export function TicketDialog({ event, registration, open, onOpenChange }: {
-  event: CampusEvent; registration: DemoRegistration; open: boolean; onOpenChange: (o: boolean) => void;
+export function TicketDialog({ event, registration, open, onOpenChange, demo = true }: {
+  event: CampusEvent; registration: Pick<DemoRegistration, 'passCode'>; open: boolean; onOpenChange: (o: boolean) => void;
+  /** true for on-device demo tickets (sample events), false for real registrations. */
+  demo?: boolean;
 }) {
   const { profile } = useAuth();
   const [qr, setQr] = useState<string | null>(null);
@@ -19,10 +21,10 @@ export function TicketDialog({ event, registration, open, onOpenChange }: {
     if (!open) return;
     // A REAL, scannable QR. It holds only a random pass code (no personal
     // data, no secrets). Server-verified check-in arrives in a later stage.
-    QRCode.toDataURL(`CAMPUSSYNC-DEMO|${event.id}|${registration.passCode}`, {
+    QRCode.toDataURL(demo ? `CAMPUSSYNC-DEMO|${event.id}|${registration.passCode}` : `CAMPUSSYNC|${registration.passCode}`, {
       margin: 1, width: 440, errorCorrectionLevel: 'M', color: { dark: '#4A2E35', light: '#FFFFFF' },
     }).then(setQr).catch(() => setQr(null));
-  }, [open, event.id, registration.passCode]);
+  }, [open, event.id, registration.passCode, demo]);
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(registration.passCode); setCopied('Pass code copied.'); }
@@ -69,7 +71,9 @@ export function TicketDialog({ event, registration, open, onOpenChange }: {
             </div>
             <p id="ticket-desc" className="flex items-start gap-2 px-6 pt-4 pb-6 text-xs text-plum-soft">
               <FlaskConical className="mt-0.5 size-3.5 shrink-0 text-amber" aria-hidden />
-              Demo ticket for a sample event, stored on this device. It is not valid for entry. Server-verified QR check-in is added in a later stage.
+              {demo
+                ? 'Demo ticket for a sample event, stored on this device. It is not valid for entry.'
+                : 'Your registration is confirmed. Show this pass at the entrance; organizer scanning and verified check-in are added in the next stage.'}
             </p>
           </motion.div>
         </Dialog.Content>
