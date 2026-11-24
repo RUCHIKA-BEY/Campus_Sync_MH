@@ -71,37 +71,112 @@ Access control must be enforced by the backend and database policies, not merely
 
 ---
 
+##  Project Status (honest snapshot)
+
+| Area | Status |
+|---|---|
+| Database: 21 tables, constraints, 75 RLS policies, explicit API grants | ✅ Built, 63 automated tests |
+| Authentication: sign-up, sign-in, reset, sessions, profile trigger | ✅ Built |
+| Roles: student / organizer / DSA / admin, audited role changes | ✅ Built |
+| Timetable: personal weekly classes, no overlapping classes | ✅ Built |
+| Organizer drafts, club leads, admin users and audit log | ✅ Built |
+| Event discovery UI, filters, bookmarks, QR pass | ✅ Built, using **sample events** until Stages 5–6 |
+| Proposal submission and DSA approval | ⏳ Stage 5 |
+| Timetable-conflict-aware registration, venue collision checks | ⏳ Stage 6 |
+| OD requests, verified QR attendance | ⏳ Stage 7 |
+| Notifications, analytics dashboards | ⏳ Stage 8 |
+
+---
+
 ##  Design Philosophy
 
-CampusSync combines a clean, daylight-friendly interface with a warm, premium visual identity.
+A clean, daylight-friendly interface with a warm, premium identity. Every page sits on a light canvas (no dark full-screen views).
 
-The design uses:
+| Role | Colour |
+|---|---|
+| Canvas | Warm Ivory `#FAF6F0` |
+| Cards | White `#FFFFFF` / Soft Cream `#F7F3EC`, borders `#EAE3D9` |
+| Headings, navigation, primary text | Deep Plum `#4A2E35` |
+| Inputs, chips, secondary UI | Dusty Mauve `#EADFD8` / `#D6C7C2`, input fill `#F3ECE7` |
+| Calls to action, highlights | Terracotta `#D96B43` |
 
-- **Warm Platinum** — a calm, welcoming background.
-- **Deep Mocha** — strong headings, navigation, and brand elements.
-- **Soft Burnt Coral** — featured events and important calls to action.
-- **Platinum Silver** — subtle borders and interface separation.
-- **Champagne Gold** — refined highlights and accents.
-- **Burnt Amber** — secondary emphasis and warm details.
-
-The goal is to make campus events feel engaging and discoverable while keeping dashboards readable, navigation intuitive, and essential actions easy to find.
+The tokens live in one place: `web/src/index.css` (`@theme`).
 
 ---
 
 ##  Technology Stack
 
-The intended stack is:
-
 | Layer | Technology |
 |---|---|
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
-| Backend and Database | Supabase |
-| Database | PostgreSQL |
-| Authentication | Supabase Auth |
-| Authorization | PostgreSQL Row Level Security (RLS) |
-| Development Tools | Visual Studio Code, Git, GitHub |
-| UI Design | Google Stitch and custom HTML/CSS implementation |
+| Frontend | React 19 + TypeScript (strict), Vite 8 |
+| Styling & motion | Tailwind CSS 4, Motion, Lucide icons, Radix UI primitives |
+| Data fetching | TanStack Query, `@supabase/supabase-js` |
+| Backend | Supabase: PostgreSQL, Auth, Row Level Security, SQL functions |
+| Database changes | Versioned SQL migrations (`supabase/migrations/`) applied with the Supabase CLI |
+| Testing | Vitest (frontend logic), PGlite (real PostgreSQL in Node) for database tests |
+| Hosting | Vercel (static build) |
 
-Additional libraries or services may be introduced where they serve a specific requirement, such as QR-code generation.
+---
 
-> The technology list describes
+##  Getting Started
+
+**Prerequisites:** Node.js 22+ and a Supabase project (see `docs/AUTHENTICATION.md` §7).
+
+```bash
+npm install
+```
+
+Create `.env.local` in the project root (git-ignored). These are **public** values only:
+
+```
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+VITE_DEMO_MODE=true
+```
+
+```bash
+npm run dev
+```
+
+Then open `http://localhost:5500`. Leave the two `VITE_SUPABASE_*` values empty to run with sample data and no backend.
+
+| Command | Purpose |
+|---|---|
+| `npm run build` | Type-check and production build into `dist/` |
+| `npm run test:web` | Frontend unit tests |
+| `npm run test:db` | Database schema, auth and RLS tests |
+| `npm run check:supabase` | Check the live project as an anonymous visitor (public key only) |
+| `npm run db:list` / `db:push:dry` / `db:push` | Migration history and deployment (see `docs/MIGRATIONS.md`) |
+| `npm run demo:users` | Create the four demo accounts (needs the secret key in `.env`, local only) |
+
+> **Never** put the Supabase secret key or database password in `VITE_*` variables, `.env.local` or any frontend file. The Vercel build refuses a secret key in the public slot.
+
+---
+
+##  Project Structure
+
+```
+web/                React + TypeScript app (src/features/* = one folder per screen)
+supabase/           migrations, seed.sql, verify_setup.sql, CLI config
+tests/db/           PGlite database tests
+scripts/            demo users, SQL bundle, live project check
+docs/               architecture, database, security, migrations, frontend, testing
+public/             legacy static site (kept until the React deployment is verified)
+```
+
+---
+
+##  Documentation
+
+- `docs/FRONTEND.md`: React architecture; what's real vs. sample data
+- `docs/SCHEMA_PROPOSAL.md`: the database design and decisions
+- `docs/AUTHENTICATION.md`: sign-up, sessions, setup guide
+- `docs/SECURITY.md`: roles, RLS, trusted functions, permission matrix
+- `docs/MIGRATIONS.md`: migration history and the deployment workflow
+- `docs/TESTING.md`: test strategy and results
+
+---
+
+##  Institution
+
+Developed as a university academic project, *CampusSync: Smart Campus Event & Academic Coordination Platform*.

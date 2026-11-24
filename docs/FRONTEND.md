@@ -100,7 +100,7 @@ Leave the two `VITE_SUPABASE_*` values empty to run in **sample mode** (no backe
 
 1. ✅ Timetable and the Organizer / DSA / Admin screens rebuilt.
 2. ✅ Bundle split per route. The first load went from 926 kB to 665 kB (199 kB gzipped); the rest is shared vendor code (supabase-js, Motion, router).
-3. Verify the signed-in screens yourself (demo accounts).
+3. ✅ Signed-in screens verified with the demo accounts.
 4. Set `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in Vercel → Project → Settings → Environment Variables.
-5. Change `vercel.json` to `"buildCommand": "npm run build", "outputDirectory": "dist"`.
+5. ✅ `vercel.json` now runs `npm ci` + `npm run build` and serves `dist/`, with SPA rewrites and security headers. A Vercel build **fails on purpose** if the two `VITE_SUPABASE_*` variables are missing, or if a secret key is used.
 6. Retire `public/` (legacy) once the deployed React app is verified.

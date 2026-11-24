@@ -3,18 +3,19 @@
 //
 //   npm run check:supabase
 //
-// It reads public/js/config.js (what the website really uses), falling
-// back to SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY in .env.
+// It reads the same values the React app uses (VITE_SUPABASE_URL /
+// VITE_SUPABASE_PUBLISHABLE_KEY from .env.local or .env), falling back to
+// SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY.
 // It creates no accounts and changes no data (the one write attempt is
 // expected to be REFUSED by RLS).
 import { createClient } from '@supabase/supabase-js';
-import * as siteConfig from '../public/js/config.js';
 
-const url = siteConfig.SUPABASE_URL || process.env.SUPABASE_URL;
-const key = siteConfig.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+const env = process.env;
+const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
+const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY;
 
 function die(msg) { console.error(`\n✖ ${msg}\n`); process.exit(1); }
-if (!url || !key) die('No Supabase URL/publishable key found in public/js/config.js or .env.');
+if (!url || !key) die('No Supabase URL/publishable key found. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.');
 
 // Safety: a secret key must NEVER be in the public config.
 function looksSecret(k) {
@@ -26,7 +27,7 @@ function looksSecret(k) {
   return false;
 }
 if (looksSecret(key)) {
-  die('DANGER: the key in public/js/config.js is a SECRET/service-role key. Remove it now, ' +
+  die('DANGER: the publishable-key setting holds a SECRET/service-role key. Remove it now, ' +
       'use the publishable key instead, and rotate the secret key in the Supabase dashboard.');
 }
 
