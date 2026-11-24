@@ -5,6 +5,7 @@ import { defineConfig, loadEnv, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
+import { CSP } from './csp';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const envDir = fileURLToPath(new URL('..', import.meta.url));
@@ -33,7 +34,8 @@ const config = {
   envDir,
   plugins: [react(), tailwindcss()],
   server: { port: 5500, strictPort: true },
-  preview: { port: 5500, strictPort: true },
+  // Same security headers as vercel.json, so `npm run preview` tests them locally.
+  preview: { port: 5500, strictPort: true, headers: { 'Content-Security-Policy': CSP } },
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),
     emptyOutDir: true,

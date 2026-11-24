@@ -148,7 +148,13 @@ await supabase.from('venues').insert({ name: 'Hacked Hall', capacity: 10 });
 await supabase.rpc('admin_set_user_role', { p_user_id: user.id, p_role: 'admin' });
 ```
 
-## 8. Secrets
+## 8. Browser-side defences
+
+- **Content-Security-Policy** (`web/csp.ts`, sent by Vercel): scripts only from CampusSync's own origin, network requests only to `*.supabase.co`, no framing (`frame-ancestors 'none'`), no plugins. An injected `<script>` wouldn't run.
+- Other headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY`, and `Permissions-Policy` (camera allowed only for our own pages, for QR scanning).
+- React escapes all text, and there's no raw HTML rendering anywhere (audited).
+
+## 9. Secrets
 
 | Value | Where it may live |
 |---|---|
@@ -157,9 +163,10 @@ await supabase.rpc('admin_set_user_role', { p_user_id: user.id, p_role: 'admin' 
 
 The secret key **bypasses RLS completely**. It's used only by `scripts/create-demo-users.mjs`, which runs locally.
 
-## 9. Known limitations / later stages
+## 10. Workflow writes and remaining limitations
 
-- Workflow writes (register, submit/approve/publish, OD decisions, check-in) have **no direct table policies yet**, so they're impossible until their checked functions arrive in Stages 5–7.
-- Organizers can't yet see registrant names (profiles are private). A limited, purpose-built function will expose name and registration number for their own events (Stage 6/8).
-- Supabase's built-in email sender is rate-limited. Custom SMTP is optional.
-- The demo bar exists for evaluations. Set `DEMO_MODE = false` for real use.
+- Workflow writes (register, submit/approve/publish, OD decisions, check-in) **deliberately have no direct table policies or GRANTs**. They happen only inside the checked functions listed in API_REFERENCE.md, and `tests/db/security_audit.test.js` pins exactly which functions each role may call.
+- Organizers see registrants only through `get_event_registrants` (name, registration number, department, year and clash status; never email or phone). Profiles otherwise stay private.
+- The QR pass is static: screenshot forwarding is mitigated by the organizer's name check, not prevented.
+- Supabase's built-in email sender is rate-limited. Custom SMTP is optional, and notifications are in-app only.
+- The sign-in page's demo accounts exist for evaluations. Set `VITE_DEMO_MODE=false` for real use.

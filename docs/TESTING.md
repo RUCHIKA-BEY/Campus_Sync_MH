@@ -171,6 +171,21 @@ Fixes:
 
 **Not yet verified:** the signed-in dashboards on the live project (they need migration 11 pushed).
 
+## Stage 10 results (final audit)
+
+**Database: 126 / 126 passed** (5 new in `tests/db/security_audit.test.js`). **Web: 44 / 44** (2 new CSP tests). Type check clean; production build clean. Live project: `npm run check:supabase` passes all 11 checks.
+
+| Audit item | Result |
+|---|---|
+| Functions callable by visitors | only `get_event_seats` (plus PostgreSQL's automatic `time_range` constructors); enforced by a test |
+| Functions callable by signed-in users | exactly the 37 designed functions; no internal `_` helpers, `write_audit` or `notify`; enforced by a test |
+| SECURITY DEFINER functions without a pinned `search_path` | 0 |
+| Tables without RLS / tables visitors can write | 0 / 0 |
+| Secrets in tracked files | none (only placeholders in `.env.example`); `.env` and `.env.local` git-ignored |
+| Raw HTML rendering (`dangerouslySetInnerHTML`, `innerHTML`) or `eval` in React code | none |
+| `npm audit` (runtime and development dependencies) | 0 known vulnerabilities |
+| Content-Security-Policy | added (`web/csp.ts`, `vercel.json`, kept identical by a test). Production build served locally with the policy: 0 violations across 6 pages, fonts and 8 live Supabase requests OK |
+
 ## Not yet tested (and why)
 
 - **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.

@@ -173,7 +173,11 @@ public/             legacy static site (kept until the React deployment is verif
 - `docs/AUTHENTICATION.md`: sign-up, sessions, setup guide
 - `docs/SECURITY.md`: roles, RLS, trusted functions, permission matrix
 - `docs/MIGRATIONS.md`: migration history and the deployment workflow
-- `docs/BUSINESS_LOGIC.md`: event lifecycle, who can do what, and why
+- `docs/BUSINESS_LOGIC.md`: event lifecycle, conflicts, registration, OD, attendance, dashboards
+- `docs/ARCHITECTURE.md`: how the pieces fit and why
+- `docs/DATABASE.md`: tables, triggers, migrations (as built)
+- `docs/API_REFERENCE.md`: every database function and table permission
+- `docs/VIVA_GUIDE.md`: pitch, demo script, concepts and likely questions
 - `docs/TESTING.md`: test strategy and results
 
 ---
