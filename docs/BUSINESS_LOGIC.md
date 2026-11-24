@@ -117,7 +117,61 @@ A warning appears when both events are at least department-scope (configurable: 
 
 `get_event_registrants(event)` lets a club's organizers, the DSA and admins see who registered: name, registration number, department, year, and the conflict snapshot. Email and phone are never exposed. Profiles otherwise stay private (RLS).
 
-## 7. Coming next (Stage 7)
+## 7. On-Duty requests (Stage 7, migration `20261124000400_od_and_attendance.sql`)
 
-- OD requests from the student's registration (using the stored conflict snapshot), with review by the configured OD reviewer.
-- Verified QR check-in: the organizer scans a pass during an open attendance session, plus manual attendance.
+```
+register for an OD-eligible event -> a real class clash exists -> request_od(reason)
+    -> pending -> (OD reviewer) approve | reject (reason required) -> student notified
+    the student may withdraw while pending; cancelling the registration withdraws it automatically
+```
+
+| Rule | Enforced by |
+|---|---|
+| Only for your own **active registration**, an **OD-eligible**, **published**, not-yet-ended event | `request_od` |
+| There must be a **real clash right now** (partial or full). No clash means OD isn't needed; no timetable means "add your timetable first" | `request_od` -> `_timetable_conflict` |
+| The clashing classes are stored as **evidence** (`conflict_snapshot`) for the reviewer | `request_od` |
+| One active request per registration | unique index + function check |
+| Reviewers = roles in `platform_settings.od_reviewer_roles` (default DSA) | `can_review_od()` in `decide_od` |
+| Rejection needs a reason of 10+ characters; reviewers can't decide their own request; every decision audited | `decide_od` |
+| **Approval never creates attendance** | tests prove it |
+
+CampusSync records the platform's OD workflow. It does **not** claim to update the university's official OD or attendance systems.
+
+## 8. QR attendance (Stage 7)
+
+```
+organizer opens a check-in session (5-720 min, from 2 h before start until the end)
+  -> scans the student's pass (camera or typed code) -> check_in(event, pass) validates -> attendance (method 'qr')
+  fallback: mark_attendance_manual (method 'manual', audited);  mistakes: revoke_attendance (reason, audited)
+```
+
+### What `check_in` checks
+
+1. The caller manages the event's club.
+2. A session for **this** event is open **right now**: the time limit.
+3. The code looks like a CampusSync pass (32 hex characters; the `CAMPUSSYNC|` prefix and letter case are ignored).
+4. The pass exists, belongs to **this** event, and the registration is active (not cancelled).
+5. The student hasn't already checked in. A unique constraint also guarantees this.
+
+It then returns the student's **name and registration number**, which the organizer compares with the person in front of them.
+
+### What the QR protects against, and what it doesn't
+
+| Attack | Protected? | How |
+|---|---|---|
+| Guessing a valid pass | Yes | Pass codes are 122 random bits |
+| Making up attendance from the browser | Yes | No INSERT privilege on `attendance_records` for browser roles; only the organizer-only function writes |
+| Checking yourself in | Yes | `check_in` requires the club's organizer |
+| Using a pass at a different event | Yes | Must belong to this event |
+| Using a pass from a cancelled registration | Yes | Registration must be active |
+| Checking in twice | Yes | Function check + unique constraint |
+| Checking in outside the event time | Yes | Only during an open session (from 2 h before the start until the end) |
+| Reading personal data from the QR | Yes | The QR holds only the random code |
+| A friend showing your **screenshot** | Partly | The pass is static (not a rotating code). The organizer sees the registered name on every scan to catch this. A screenshot-proof rotating QR is **not** implemented |
+| Organizer marks someone present who wasn't there | Audited | Manual marks and revocations are in the audit log |
+
+## 9. Coming next (Stage 8)
+
+- Notification centre: list, unread count, mark read and mark all read (every workflow above already creates notifications).
+- Role dashboards and analytics from aggregate database queries.
+- Personalised recommendations (interests + past registrations + timetable fit).

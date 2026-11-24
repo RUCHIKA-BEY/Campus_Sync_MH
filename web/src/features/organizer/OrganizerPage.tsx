@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban } from 'lucide-react';
+import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban, QrCode } from 'lucide-react';
 import { ReasonDialog } from '../../components/ReasonDialog';
 import { RegistrantsDialog } from './RegistrantsDialog';
+import { AttendanceDialog } from './AttendanceDialog';
 import { SchedulingWarnings } from '../events/SchedulingWarnings';
 import { useDepartments } from '../../lib/queries';
 import { useCancelEvent, useCompleteEvent, usePublishEvent, useReopenEvent, useSubmitEvent } from '../../lib/workflow';
@@ -99,6 +100,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
   const [confirm, setConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showRegistrants, setShowRegistrants] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
   const editable = EDITABLE.includes(event.status);
   const ended = Date.parse(event.ends_at) <= Date.now();
   // Run an action and report the database's answer in plain language.
@@ -127,6 +129,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {['published', 'completed', 'cancelled'].includes(event.status) && <Button variant="secondary" size="sm" onClick={() => setShowRegistrants(true)}><Users className="size-4" />Registrants</Button>}
+        {['published', 'completed'].includes(event.status) && <Button size="sm" onClick={() => setShowAttendance(true)}><QrCode className="size-4" />Check-in</Button>}
         {editable && <Button variant="secondary" size="sm" onClick={onEdit}><FilePen className="size-4" />Edit</Button>}
         {event.status === 'draft' && (confirm ? (
           <>
@@ -154,6 +157,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
           <Button variant="ghost" size="sm" onClick={() => setCancelling(true)} className="text-terracotta-deep"><Ban className="size-4" />Cancel event</Button>
         )}
       </div>
+      {showAttendance && <AttendanceDialog eventId={event.id} title={event.title} onClose={() => setShowAttendance(false)} />}
       {showRegistrants && <RegistrantsDialog eventId={event.id} title={event.title} capacity={event.capacity} onClose={() => setShowRegistrants(false)} />}
       {cancelling && (
         <ReasonDialog title={`Cancel “${event.title}”?`} label="Reason (shown to registered students)" confirmLabel="Cancel event"

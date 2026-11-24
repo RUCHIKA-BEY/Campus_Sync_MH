@@ -4,7 +4,8 @@
 --
 -- Rows marked [m7] need migration 20261124000100 (explicit grants);
 -- rows marked [m8] need 20261124000200 (event lifecycle, Stage 5);
--- rows marked [m9] need 20261124000300 (registration & conflicts, Stage 6).
+-- rows marked [m9] need 20261124000300 (registration & conflicts, Stage 6);
+-- rows marked [m10] need 20261124000400 (OD & attendance, Stage 7).
 -- The last two rows read the Supabase CLI's migration history table
 -- (supabase_migrations.schema_migrations); before you run
 -- `supabase migration repair` they show "no history table yet".
@@ -82,6 +83,15 @@ checks(check_name, expected, actual, passed) as (
   ('[m9] visitors can read seat counts (numbers only)', 'true',
      (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'get_event_seats'), null),
+  ('[m10] OD & attendance functions for logged-in users', '12',
+     (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('request_od','withdraw_od','decide_od','get_od_queue','my_od_requests','open_attendance_session',
+                          'close_attendance_session','check_in','mark_attendance_manual','revoke_attendance','get_event_attendance','my_attendance')
+        and has_function_privilege('authenticated', p.oid, 'EXECUTE')), null),
+  ('[m10] visitors can call check_in (must be false)', 'false',
+     (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'check_in'), null),
   ('categories (migration data)', '8',  (select count(*)::text from public.categories), null),
   ('platform settings (migration data)', '6', (select count(*)::text from public.platform_settings), null),
   ('departments (seed, at least 1)', '≥ 1', (select count(*)::text from public.departments),
@@ -92,9 +102,9 @@ checks(check_name, expected, actual, passed) as (
      (select count(*) > 0 from public.clubs)),
   ('academic terms (seed, at least 1)', '≥ 1', (select count(*)::text from public.academic_terms),
      (select count(*) > 0 from public.academic_terms)),
-  ('migration history: versions recorded', '9',
+  ('migration history: versions recorded', '10',
      coalesce((select applied_count from history), 'no history table yet'), null),
-  ('migration history: latest version', '20261124000300',
+  ('migration history: latest version', '20261124000400',
      coalesce((select latest_version from history), 'no history table yet'), null)
 )
 select case when coalesce(passed, expected = actual) then '✅' else '❌' end as ok,

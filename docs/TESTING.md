@@ -130,6 +130,27 @@ Fixes:
 
 **Not tested:** truly simultaneous last-seat requests. PGlite has one connection; the guarantee comes from the row lock. The signed-in flows on the live project also need migration 9 pushed and a walkthrough.
 
+## Stage 7 results (OD & attendance)
+
+**Database: 114 / 114 passed** (13 new in `tests/db/od_attendance.test.js`). **Web: 42 / 42**, including a QR round-trip: a pass generated in the ticket's colours is decoded by the scanner library.
+
+| Requirement | Result |
+|---|---|
+| Valid OD request (with evidence and reviewer notification) | pass |
+| OD refused without registration, for non-OD events, without a clash, without a timetable | pass |
+| Duplicate OD request refused; short reason refused | pass |
+| Unauthorized OD approval refused (student, organizer, admin when not configured); reviewer role configurable | pass |
+| **OD approval creates no attendance** | pass |
+| Withdraw own pending request only; queue and own list scoped correctly | pass |
+| Attendance without registration / for another event / cancelled registration refused | pass |
+| **Expired and closed sessions** refuse check-in (time limit); invalid and unknown passes refused | pass |
+| Duplicate attendance refused (QR and manual) | pass |
+| Students can't check themselves in or write attendance directly | pass |
+| Sessions only by the club's organizers, only around the event time | pass |
+| Manual marks audited; revocation needs a reason and is audited | pass |
+
+**Not tested automatically:** real camera scanning (it needs a physical camera and the browser's permission prompt), and the signed-in flows on the live project (they need migration 10 pushed).
+
 ## Not yet tested (and why)
 
 - **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.

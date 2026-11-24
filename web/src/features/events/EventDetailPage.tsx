@@ -13,6 +13,8 @@ import { useDemoRegistrations } from '../../lib/demo';
 import { friendlyError } from '../../lib/errors';
 import { CONFLICT_LABEL, useCancelRegistration, useMyRegistrations, useRegister } from '../../lib/registration';
 import { CanIAttend } from './CanIAttend';
+import { OdPanel } from './OdPanel';
+import { useMyAttendance } from '../../lib/od';
 import { BookmarkButton, OdBadge, SampleNotice, StatusBadge, useNow } from './eventUi';
 import { TicketDialog } from './TicketDialog';
 
@@ -25,6 +27,7 @@ export function EventDetailPage() {
   const register = useRegister();
   const cancelReg = useCancelRegistration();
   const [freshPass, setFreshPass] = useState<string | null>(null);
+  const myAttendance = useMyAttendance();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
@@ -52,6 +55,7 @@ export function EventDetailPage() {
   const realPass = realReg?.pass_code ?? freshPass;
   const isStudent = profile?.role === 'student';
   const canCancelReal = Date.parse(event.registrationClosesAt) > now.getTime();
+  const attended = myAttendance.data?.find(a => a.event_id === event.id && a.verification_status === 'verified');
   // Seat counts are unknown for real events until registration exists (Stage 6).
   const fill = event.registeredCount === null ? null : Math.min(100, Math.round((event.registeredCount / event.capacity) * 100));
   const left = seatsLeft(event);
@@ -139,7 +143,7 @@ export function EventDetailPage() {
           {event.odEligible && (
             <section className="mt-6 flex gap-3 rounded-2xl border border-terracotta/20 bg-peach p-4 text-sm">
               <BadgeCheck className="size-5 shrink-0 text-terracotta" aria-hidden />
-              <p><strong>On-Duty eligible.</strong> If this event clashes with your classes, you can request On-Duty after registering{event.isSample ? '' : ' (the request form arrives in the next stage)'}.</p>
+              <p><strong>On-Duty eligible.</strong> If this event clashes with your classes, you can request On-Duty after registering.</p>
             </section>
           )}
           {event.lifecycle === 'cancelled' && (
@@ -181,7 +185,7 @@ export function EventDetailPage() {
                   : <Button size="lg" disabled>{statusLabel(status, event)}</Button>
               ) : realPass ? (
                 <>
-                  <p className="rounded-xl bg-sage-bg px-3 py-2 text-sm font-semibold text-sage">✓ You’re registered</p>
+                  <p className="rounded-xl bg-sage-bg px-3 py-2 text-sm font-semibold text-sage">✓ You’re registered{attended ? ' · checked in' : ''}</p>
                   <Button onClick={() => setTicketOpen(true)} size="lg"><Ticket className="size-4" />View ticket</Button>
                   {canCancelReal && (confirmCancel ? (
                     <div className="grid grid-cols-2 gap-2">
@@ -192,6 +196,9 @@ export function EventDetailPage() {
                       })}>Yes, cancel</Button>
                     </div>
                   ) : <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>)}
+                  {event.odEligible && event.lifecycle === 'published' && Date.parse(event.endsAt) > now.getTime() && (
+                    <OdPanel eventId={event.id} eventTitle={event.title} />
+                  )}
                 </>
               ) : !canRegister(status) ? (
                 // Never show an action that can't succeed.
@@ -210,7 +217,7 @@ export function EventDetailPage() {
       </div>
 
       {event.isSample && registration && <TicketDialog event={event} registration={registration} open={ticketOpen} onOpenChange={setTicketOpen} />}
-      {!event.isSample && realPass && <TicketDialog demo={false} event={event} registration={{ passCode: realPass }} open={ticketOpen} onOpenChange={setTicketOpen} />}
+      {!event.isSample && realPass && <TicketDialog demo={false} checkedInAt={attended?.checked_in_at ?? null} event={event} registration={{ passCode: realPass }} open={ticketOpen} onOpenChange={setTicketOpen} />}
     </div>
   );
 }

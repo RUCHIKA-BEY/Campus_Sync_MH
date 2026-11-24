@@ -8,10 +8,12 @@ import { longDate, timeRange, type CampusEvent } from '../../lib/events';
 import type { DemoRegistration } from '../../lib/demo';
 import { Badge } from '../../components/ui';
 
-export function TicketDialog({ event, registration, open, onOpenChange, demo = true }: {
+export function TicketDialog({ event, registration, open, onOpenChange, demo = true, checkedInAt = null }: {
   event: CampusEvent; registration: Pick<DemoRegistration, 'passCode'>; open: boolean; onOpenChange: (o: boolean) => void;
   /** true for on-device demo tickets (sample events), false for real registrations. */
   demo?: boolean;
+  /** When an organizer has scanned this pass (real events). */
+  checkedInAt?: string | null;
 }) {
   const { profile } = useAuth();
   const [qr, setQr] = useState<string | null>(null);
@@ -67,13 +69,15 @@ export function TicketDialog({ event, registration, open, onOpenChange, demo = t
             </dl>
             <div className="mx-6 mt-5 flex items-center justify-between rounded-2xl bg-cream px-4 py-3 text-sm">
               <span className="flex items-center gap-2 font-semibold"><CircleDashed className="size-4 text-plum-muted" aria-hidden />Venue check-in</span>
-              <Badge tone="amber">Not scanned</Badge>
+              {checkedInAt
+                ? <Badge tone="sage">Checked in {new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }).format(new Date(checkedInAt))}</Badge>
+                : <Badge tone="amber">Not scanned</Badge>}
             </div>
             <p id="ticket-desc" className="flex items-start gap-2 px-6 pt-4 pb-6 text-xs text-plum-soft">
               <FlaskConical className="mt-0.5 size-3.5 shrink-0 text-amber" aria-hidden />
               {demo
                 ? 'Demo ticket for a sample event, stored on this device. It is not valid for entry.'
-                : 'Your registration is confirmed. Show this pass at the entrance; organizer scanning and verified check-in are added in the next stage.'}
+                : 'Show this pass at the entrance. The organizer scans it during check-in; it only works for this event and only once.'}
             </p>
           </motion.div>
         </Dialog.Content>

@@ -13,6 +13,8 @@ import { requireSupabase, supabase } from '../../lib/supabase';
 import { STATUS_LABEL, type EventStatus } from '../../lib/organizer';
 import { usePublishEvent, useReviewEvent, useStartReview, type Decision } from '../../lib/workflow';
 import { SchedulingWarnings } from '../events/SchedulingWarnings';
+import { OdQueue } from './OdQueue';
+import { useOdQueue } from '../../lib/od';
 
 interface Proposal {
   id: string; title: string; description: string; status: EventStatus; scope: string; event_type: string;
@@ -20,7 +22,6 @@ interface Proposal {
   submitted_at: string | null; capacity: number; od_eligible: boolean; review_note: string | null;
   club: { name: string } | null; venue: { name: string; capacity: number } | null; category: { name: string } | null;
 }
-interface OdRow { id: string; status: string; reason: string; requested_at: string }
 
 const AWAITING: EventStatus[] = ['submitted', 'under_review'];
 
@@ -38,23 +39,11 @@ function useProposals() {
     },
   });
 }
-function useOdQueue() {
-  return useQuery({
-    queryKey: ['dsa-od'], enabled: Boolean(supabase),
-    queryFn: async (): Promise<OdRow[]> => {
-      const { data, error } = await requireSupabase().from('od_requests')
-        .select('id, status, reason, requested_at').eq('status', 'pending').order('requested_at').limit(100);
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
 type Tab = 'proposals' | 'od';
 
 export function DsaPage() {
   const proposals = useProposals();
-  const od = useOdQueue();
+  const od = useOdQueue('pending');
   const [tab, setTab] = useState<Tab>('proposals');
   const [reviewing, setReviewing] = useState<Proposal | null>(null);
 
@@ -98,24 +87,7 @@ export function DsaPage() {
         )
       )}
 
-      {tab === 'od' && (
-        od.isError ? <FormStatus kind="error">{friendlyError(od.error)}</FormStatus>
-        : od.isPending ? <Skeleton className="h-48" />
-        : !od.data?.length ? (
-          <EmptyState icon={<ClipboardCheck className="size-6" />} title="No pending OD requests">
-            Students request On-Duty after registering for an eligible event that clashes with their classes (Stages 6–7).
-          </EmptyState>
-        ) : (
-          <div className="grid gap-3">
-            {od.data.map(r => (
-              <Card key={r.id} className="p-4 text-sm">
-                <p className="text-xs text-plum-soft">Requested {shortDateTime(r.requested_at)}</p>
-                <p className="mt-1">{r.reason}</p>
-              </Card>
-            ))}
-          </div>
-        )
-      )}
+      {tab === 'od' && <OdQueue />}
 
       {reviewing && <ReviewDialog e={reviewing} onClose={() => setReviewing(null)} />}
     </div>

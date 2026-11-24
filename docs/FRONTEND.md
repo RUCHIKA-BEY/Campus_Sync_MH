@@ -59,6 +59,7 @@ web/
 | Registration status (open, closing soon, full, closed, ended) | **Real logic** computed from dates; runs unchanged on DB rows later |
 | Registration, cancellation, "Can I attend?", QR pass (real events) | **Real** (`register_for_event`, `check_timetable_conflict`, `cancel_registration`). Verified check-in is Stage 7 |
 | Bookmarks; demo registration for sample events | On this device (localStorage), labelled |
+| On-Duty requests (student), OD review queue (DSA), check-in desk with camera scanner and manual marking (organizer) | **Real** (migration 10). The scanner uses `jsqr`, loaded only when scanning starts |
 | Organizer registrants list, campus-wide clash warnings, target departments | **Real** (`get_event_registrants`, `event_scheduling_warnings`, `event_audiences`) |
 | Notifications | Honest empty panel, with no fake count |
 | Timetable | **Real**: add, edit and delete weekly classes (`timetable_slots`). The database rejects overlapping classes. Private to the student |
