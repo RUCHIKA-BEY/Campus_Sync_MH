@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test:db": "node --test \"tests/db/*.test.js\"",
-    "demo:users": "node --env-file=.env scripts/create-demo-users.mjs"
+    "demo:users": "node --env-file=.env scripts/create-demo-users.mjs",
+    "db:bundle": "node scripts/bundle-sql.mjs",
+    "check:supabase": "node --env-file-if-exists=.env scripts/check-supabase.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.12",

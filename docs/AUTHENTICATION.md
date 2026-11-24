@@ -113,36 +113,39 @@ The guard only decides **what to show**. If someone deletes it from the JavaScri
 1. Sign in at supabase.com → **New project**. A free plan is fine. Choose a region close to you (e.g. Mumbai).
 2. Save the database password in your password manager. **It never goes in the repo.**
 
-### 7.2 Apply the database
-In **SQL Editor**, run these files **in this order**, one at a time:
-1. `supabase/migrations/20261111000100_extensions_and_types.sql`
-2. `…000200_core_tables.sql`
-3. `…000300_housekeeping_triggers_and_rls_lockdown.sql`
-4. `…000400_reference_data.sql`
-5. `…000500_auth_roles_and_helpers.sql`
-6. `…000600_rls_policies.sql`
-7. `supabase/seed.sql` (dev/demo projects only)
+### 7.2 Apply the database (one paste)
+1. On your machine, generate the bundle (all 6 migrations + seed in one transaction):
 
-Check: **Table Editor** shows 21 tables, each marked **RLS enabled**.
+```bash
+npm run db:bundle
+```
+
+2. Open `supabase/.bundle/setup_all.sql`, copy **everything**, paste it into **SQL Editor → New query**, and press **Run**. If Supabase warns about "destructive operations", that's caused by the `REVOKE` statements; confirm to run.
+3. It succeeds completely or not at all. On an empty project, a failure means nothing was applied, so you can fix the problem and run it again.
+4. **Verify:** paste `supabase/verify_setup.sql` into a new query and Run. All 17 rows should show ✅.
+
+(Production projects: use `npm run db:bundle -- --no-seed` to skip the fictional demo data.)
 
 ### 7.3 Connect the frontend
-1. **Project Settings → Data API**: copy the **Project URL**.
-2. **Project Settings → API Keys**: copy the **publishable** key (`sb_publishable_…`). *Not* the secret key.
-3. Paste both into `public/js/config.js`.
+1. Click **Connect** at the top of your project dashboard. It shows the **project URL** (`https://<ref>.supabase.co`) and the **publishable** key (`sb_publishable_…`). Both are also listed under **Settings → API Keys**.
+2. Paste both into `public/js/config.js`. **Never** the secret key (`sb_secret_…`).
+3. Check from your machine (it uses only the public key, and creates and changes nothing):
+
+```bash
+npm run check:supabase
+```
 
 ### 7.4 Configure Auth
-**Authentication → Sign In / Providers → Email**:
-- Email provider **enabled**; **Confirm email** on (recommended).
-- Minimum password length **8**.
+**Authentication → Sign In / Providers** (Auth Providers page): Email is enabled by default. Leave **Confirm email** on. Our frontend requires passwords of 8+ characters with a letter and a number. If your dashboard offers a minimum-length setting, set it to 8 so the server enforces it too.
 
 **Authentication → URL Configuration**:
-- **Site URL**: your Vercel URL (e.g. `https://campussync.vercel.app`).
-- **Redirect URLs**: add `http://localhost:5500/**` and `https://<your-vercel-domain>/**`.
+- **Site URL**: your Vercel URL (e.g. `https://campussync.vercel.app`). Until you deploy, use `http://localhost:5500`.
+- **Redirect URLs**: add `http://localhost:5500/**` and `https://<your-vercel-domain>/**`. (`**` matches any path.)
 
-> Supabase's built-in email sender is rate-limited (a few emails per hour) and meant for testing. That's fine for a project demo. For heavier use, configure your own SMTP under Authentication → Emails.
+> ⚠ Supabase's built-in email sender allows only about **2 emails per hour**. Each sign-up confirmation and password-reset email counts. Test real sign-up sparingly, and use the demo accounts (7.5) for everyday testing, because they're created already confirmed and need no email. For heavier use, configure custom SMTP.
 
 ### 7.5 Create the demo accounts
-1. Copy `.env.example` to `.env`. Fill in `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (from API Keys → **Secret keys**) and a `DEMO_PASSWORD` of 12+ characters.
+1. Copy `.env.example` to `.env`. Fill in `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (from **Settings → API Keys**, the `sb_secret_…` key; create one there if none exists) and a `DEMO_PASSWORD` of 12+ characters with letters and numbers.
 2. Run:
 
 ```bash
@@ -173,6 +176,8 @@ Then open `http://localhost:5500`.
 
 | Symptom | Likely cause |
 |---|---|
+| "Too many attempts" / no email arrives | The built-in sender's ~2 emails/hour limit. Wait, or use the demo accounts. |
+| `verify_setup.sql` shows ❌ | Note which row; usually the bundle wasn't run, or was run on a project that already had tables. |
 | "Email not confirmed" | The user hasn't clicked the confirmation link (or it went to spam). |
 | Reset/confirm link opens the site but nothing happens | That URL is missing from **Redirect URLs** (7.4). |
 | "Database error saving new user" during sign-up | Migrations 1–5 weren't all applied, so the profile trigger failed. |

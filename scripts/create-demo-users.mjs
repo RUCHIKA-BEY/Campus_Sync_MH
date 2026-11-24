@@ -19,7 +19,7 @@ function die(message) {
 }
 
 if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) die('Set SUPABASE_URL and SUPABASE_SECRET_KEY in .env (see .env.example).');
-if (SUPABASE_SECRET_KEY.startsWith('sb_publishable_')) die('SUPABASE_SECRET_KEY is a publishable key. Use the secret key from Project Settings → API Keys.');
+if (SUPABASE_SECRET_KEY.startsWith('sb_publishable_')) die('SUPABASE_SECRET_KEY is a publishable key. Use the sb_secret_… key from Settings → API Keys.');
 if (!DEMO_PASSWORD || DEMO_PASSWORD.length < 12 || !/[A-Za-z]/.test(DEMO_PASSWORD) || !/[0-9]/.test(DEMO_PASSWORD)) {
   die('Set DEMO_PASSWORD in .env: at least 12 characters with letters and numbers.');
 }

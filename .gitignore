@@ -6,6 +6,9 @@
 # Node tooling (tests only)
 node_modules/
 
+# Generated SQL bundle (re-create with `npm run db:bundle`)
+supabase/.bundle/
+
 # Supabase CLI local state (if you install the CLI later)
 supabase/.temp/
 supabase/.branches/
