@@ -34,6 +34,8 @@ web/
     │   ├── env.ts                 VITE_* config; refuses secret keys
     │   ├── supabase.ts            the one Supabase client
     │   ├── access.ts (+test)      route rules (UX only; RLS enforces)
+    │   ├── time.ts (+test)        IST conversions for forms, weekday/date in campus time
+    │   ├── timetable.ts, organizer.ts, admin.ts   data hooks per console
     │   ├── events.ts (+test)      event model, SAMPLE events, status, filters, IST formatting
     │   ├── queries.ts             TanStack hooks: departments, categories, clubs, interests, follows
     │   ├── demo.ts                on-device bookmarks + demo registrations
@@ -57,7 +59,10 @@ web/
 | Registration status (open, closing soon, full, closed, ended) | **Real logic** computed from dates; runs unchanged on DB rows later |
 | Bookmarks, demo registration, QR ticket | **On this device** (localStorage), labelled as demo. Real tables in Stage 6, verified check-in in Stage 7 |
 | Notifications | Honest empty panel, with no fake count |
-| Timetable, Organizer, DSA, Admin screens | Placeholders: rebuilt next |
+| Timetable | **Real**: add, edit and delete weekly classes (`timetable_slots`). The database rejects overlapping classes. Private to the student |
+| Organizer console | **Real**: managed clubs, create, edit and delete **drafts** (`events`; column GRANTs block status changes). *Submit for approval* is disabled until Stage 5 |
+| DSA desk | **Real queues** (non-draft events, pending OD), empty until Stage 5 creates submissions. Approve/reject disabled until Stage 5/7 |
+| Admin console | **Real**: counts (COUNT queries), users with role change and deactivate (audited RPCs), club leads and coordinators, audit log |
 
 ## 4. Run it
 
@@ -78,7 +83,7 @@ The app runs at `http://localhost:5500`, the same port as before, so Supabase's 
 | Command | Does |
 |---|---|
 | `npm run typecheck` | TypeScript strict check |
-| `npm run test:web` | 29 unit tests (status, filters, timezone, route rules, secret-key guard) |
+| `npm run test:web` | 35 unit tests (status, filters, timezone, route rules, secret-key guard) |
 | `npm run build` | type-check + production build into `dist/` |
 | `npm run test:db` | the 63 database tests (unchanged) |
 
@@ -91,10 +96,11 @@ Leave the two `VITE_SUPABASE_*` values empty to run in **sample mode** (no backe
 - Route guards (`Protected`) only decide what to *show*. The database (GRANTs + RLS, 63 tests) decides what is *allowed*.
 - Auth forms use `method="post"`, so credentials can never land in a URL even if JavaScript fails.
 
-## 6. Switch-over checklist (not done yet)
+## 6. Switch-over checklist
 
-1. Rebuild Timetable and the Organizer / DSA / Admin screens.
-2. Split the bundle per route (currently 926 kB, 281 kB gzipped).
-3. Set `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in Vercel → Project → Settings → Environment Variables.
-4. Change `vercel.json` to `"buildCommand": "npm run build", "outputDirectory": "dist"`.
-5. Retire `public/` (legacy) once the deployed React app is verified.
+1. ✅ Timetable and the Organizer / DSA / Admin screens rebuilt.
+2. ✅ Bundle split per route. The first load went from 926 kB to 665 kB (199 kB gzipped); the rest is shared vendor code (supabase-js, Motion, router).
+3. Verify the signed-in screens yourself (demo accounts).
+4. Set `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in Vercel → Project → Settings → Environment Variables.
+5. Change `vercel.json` to `"buildCommand": "npm run build", "outputDirectory": "dist"`.
+6. Retire `public/` (legacy) once the deployed React app is verified.

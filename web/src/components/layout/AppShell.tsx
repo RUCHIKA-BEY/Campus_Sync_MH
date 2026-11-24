@@ -1,7 +1,8 @@
+import { Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Bell, ChevronDown, LogIn, LogOut, UserRound, BellOff, FlaskConical, CircleUserRound } from 'lucide-react';
+import { LoaderCircle, Bell, ChevronDown, LogIn, LogOut, UserRound, BellOff, FlaskConical, CircleUserRound } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { isConfigured } from '../../lib/env';
 import { ROLE_LABELS } from '../../lib/types';
@@ -192,7 +193,10 @@ export function AppShell() {
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.18, ease: 'easeOut' }}>
-            <Outlet />
+            {/* Pages load on demand (code splitting); show a spinner meanwhile. */}
+            <Suspense fallback={<div className="grid min-h-[50vh] place-items-center text-plum-soft"><LoaderCircle className="size-6 animate-spin" aria-label="Loading page" /></div>}>
+              <Outlet />
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
