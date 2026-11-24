@@ -74,7 +74,21 @@ npm run test:db
 | Auth forms use `method="post"`, so credentials never land in the URL if JS fails | ✔ (found during testing) |
 | `scripts/create-demo-users.mjs` refuses missing keys, a publishable key used as secret, and a weak password | ✔ |
 
+## Live project check + migration 7 (2026-11-24)
+
+`npm run check:supabase` against the real project (public key only) found that **every table returned `42501 permission denied`**. Since 30 Oct 2026, Supabase no longer auto-grants table privileges to the API roles. The test shim had mimicked the old automatic grants, so the local tests couldn't see this.
+
+Fixes:
+- The shim now matches current Supabase (no default table grants). With that change, 20 tests failed exactly like the live project.
+- Migration `20261124000100_explicit_data_api_grants.sql` adds explicit least-privilege grants.
+- Three new guard tests check that every table is reachable by logged-in users and the server role, that visitors can only *read* the six public catalogue tables, and that browser roles can never write workflow state or protected columns.
+- Seed assertions are now "at least one row" (seed data is user-editable), and re-running the seed must not change any count.
+
+**Local result: 63 / 63 passed.** Live result before pushing migration 7: 6/11 checks pass. The 5 failures are the public tables that migration 7 opens. Re-run after `npm run db:push` (see MIGRATIONS.md §4).
+
 ## Not yet tested (and why)
+
+- **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.
 
 - **Real sign-up, sign-in, sign-out, session restore and password-reset emails against your Supabase project**, and **`npm run demo:users` against it.** These need your project keys. They're the first thing to check once you complete docs/AUTHENTICATION.md §7.
 

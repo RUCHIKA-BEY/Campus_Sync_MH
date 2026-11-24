@@ -211,11 +211,15 @@ function renderHeader() {
   if (chip) {
     // textContent (not innerHTML) so a name like "<img onerror=…>" is
     // shown as text, never executed.
-    $('.avatar', chip).textContent = p ? initials(p.full_name) : '→';
-    $('.profile-copy strong', chip).textContent = p ? p.full_name : 'Sign in';
-    $('.profile-copy small', chip).textContent = p ? ROLE_LABELS[p.role] : 'Students & staff';
-    chip.dataset.nav = p ? 'profile' : 'login';
-    chip.setAttribute('aria-label', p ? `Your profile: ${p.full_name}` : 'Sign in');
+    // Signed in, but the profile row could not be loaded: say so instead
+    // of pretending the user is signed out.
+    const orphan = !p && isSignedIn();
+    const email = authState.session?.user?.email ?? '';
+    $('.avatar', chip).textContent = p ? initials(p.full_name) : orphan ? initials(email) : '→';
+    $('.profile-copy strong', chip).textContent = p ? p.full_name : orphan ? email : 'Sign in';
+    $('.profile-copy small', chip).textContent = p ? ROLE_LABELS[p.role] : orphan ? 'Profile unavailable' : 'Students & staff';
+    chip.dataset.nav = p || orphan ? 'profile' : 'login';
+    chip.setAttribute('aria-label', p ? `Your profile: ${p.full_name}` : orphan ? `Signed in as ${email}` : 'Sign in');
   }
   const role = currentRole();
   $$('[data-requires-role]').forEach(link => { link.hidden = link.dataset.requiresRole !== role; });
@@ -254,8 +258,20 @@ export async function handleDemoPersona(role) {
 }
 
 async function fillDepartmentSelects() {
-  const departments = await listDepartments();
+  let departments;
+  try {
+    departments = await listDepartments();
+  } catch (err) {
+    // Don't leave an empty dropdown with no explanation.
+    $$('[data-department-select]').forEach(select => {
+      select.options[0].textContent = 'Couldn’t load departments (you can set this later)';
+      select.disabled = true;
+      select.title = friendlyError(err);
+    });
+    return;
+  }
   $$('[data-department-select]').forEach(select => {
+    select.disabled = false;
     const field = select.dataset.valueField;
     const keep = select.value;
     $$('option:not(:first-child)', select).forEach(o => o.remove());
@@ -271,7 +287,13 @@ async function renderInterests() {
   if (!card || !box) return;
   card.hidden = currentRole() !== 'student';
   if (card.hidden) return;
-  categoriesCache ??= await listCategories();
+  try {
+    categoriesCache ??= await listCategories();
+  } catch (err) {
+    $('[data-interests-status]').textContent = friendlyError(err);
+    $('[data-interests-status]').classList.add('is-error');
+    return;
+  }
   let selected = new Set();
   try { selected = await loadMyInterestIds(); } catch (e) { console.error(e); }
   box.replaceChildren(...categoriesCache.map(c => {
@@ -306,7 +328,11 @@ async function onInterestClick(event) {
 function renderProfilePage() {
   const p = authState.profile;
   const form = $('form[data-auth-form="profile"]');
-  if (!form || !p) return;
+  if (!form) return;
+  if (!p) {
+    if (isSignedIn()) setStatus(form, authState.profileError || 'Your profile could not be loaded.');
+    return;
+  }
   $('[data-profile-heading]').textContent = `Hi, ${p.full_name.split(' ')[0]}`;
   $('[data-profile-role]').textContent = ROLE_LABELS[p.role];
   form.full_name.value = p.full_name ?? '';
@@ -363,6 +389,9 @@ export function initAuthUI({ navigate }) {
       if (state.profile && !state.profile.is_active) {
         showToast('This account has been deactivated. Contact an administrator.');
       }
+      if (!state.profile && state.profileError) {
+        showToast(`Signed in, but your profile couldn’t be loaded: ${state.profileError}`);
+      }
       const target = pendingPage && guardRoute(pendingPage) === pendingPage ? pendingPage : homePage();
       pendingPage = null;
       // Supabase may re-emit SIGNED_IN when the tab regains focus; only
@@ -370,7 +399,7 @@ export function initAuthUI({ navigate }) {
       const current = window.location.hash.slice(1);
       if (AUTH_PAGES.has(current) || !current) {
         navigateFn(target);
-        showToast(`Signed in as ${state.profile?.full_name ?? 'you'}.`);
+        if (state.profile) showToast(`Signed in as ${state.profile.full_name}.`);
       }
     }
     if (event === 'SIGNED_OUT') {

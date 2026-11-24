@@ -14,9 +14,12 @@ do $$ begin
 end $$;
 
 grant usage on schema public, extensions to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+-- Since 30 Oct 2026 Supabase NO LONGER auto-grants table privileges in
+-- `public` to anon/authenticated/service_role ("Automatically expose new
+-- tables" is off). The shim mirrors that: tables get NO default grants,
+-- so every grant the app needs must be written explicitly in a migration
+-- (see migration 20261124000100). Functions still default to EXECUTE for
+-- PUBLIC, as in PostgreSQL itself.
 
 -- Minimal auth.users: only the columns our code touches.
 create table auth.users (

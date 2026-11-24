@@ -13,6 +13,7 @@ export const authState = {
   session: null,     // Supabase session (contains the JWT access token)
   profile: null,     // row from public.profiles (role comes from HERE, not from the browser)
   recovery: false,   // true after clicking a password-reset email link
+  profileError: null, // readable reason when signed in but the profile could not load
 };
 
 const listeners = new Set();
@@ -37,6 +38,12 @@ export function friendlyError(error) {
   if (msg.includes('same password')) return 'The new password must be different from the old one.';
   if (msg.includes('failed to fetch') || msg.includes('network')) return 'Network problem. Check your connection and try again.';
   if (msg.includes('duplicate key') && msg.includes('registration_number')) return 'That registration number is already linked to another account.';
+  // 42501 "permission denied for table …" with no RLS wording means the
+  // database has no GRANT for this table: a server setup problem, not the
+  // user's fault (see docs/MIGRATIONS.md, migration 7).
+  if (error?.code === '42501' && msg.includes('permission denied for table')) {
+    return 'The server is not set up to share this data yet (database permissions missing). Please try again later.';
+  }
   if (msg.includes('permission denied') || msg.includes('row-level security')) return 'You do not have permission to do that.';
   return error?.message || 'Something went wrong. Please try again.';
 }
@@ -58,9 +65,11 @@ export async function loadProfile() {
   if (error) {
     console.error('CampusSync: could not load profile', error);
     authState.profile = null;
+    authState.profileError = friendlyError(error); // shown in the UI, not swallowed
     return null;
   }
   authState.profile = data;
+  authState.profileError = null;
   return data;
 }
 
@@ -135,7 +144,7 @@ export async function updatePassword(newPassword) {
 export async function listDepartments() {
   if (!supabase) return [];
   const { data, error } = await supabase.from('departments').select('id, code, name').order('name');
-  if (error) { console.error(error); return []; }
+  if (error) { console.error('CampusSync: could not load departments', error); throw error; }
   return data;
 }
 
@@ -143,7 +152,7 @@ export async function listDepartments() {
 export async function listCategories() {
   if (!supabase) return [];
   const { data, error } = await supabase.from('categories').select('id, name, slug').order('sort_order');
-  if (error) { console.error(error); return []; }
+  if (error) { console.error('CampusSync: could not load categories', error); throw error; }
   return data;
 }
 

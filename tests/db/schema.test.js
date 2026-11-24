@@ -12,23 +12,32 @@ after(async () => { await db?.close(); });
 const SUBMITTED = { status: 'submitted', submitted_at: '2026-11-11 10:00+05:30' };
 
 // ---------------------------------------------------------------- setup
+const SEED_COUNTS_SQL = `select
+    (select count(*) from public.departments)::int    as departments,
+    (select count(*) from public.venues)::int         as venues,
+    (select count(*) from public.clubs)::int          as clubs,
+    (select count(*) from public.academic_terms)::int as terms`;
+
 test('migrations + seed apply cleanly and load reference data', async () => {
-  const counts = await one(db, `select
-    (select count(*) from public.categories)::int  as categories,
-    (select count(*) from public.departments)::int as departments,
-    (select count(*) from public.venues)::int      as venues,
-    (select count(*) from public.clubs)::int       as clubs,
-    (select count(*) from public.academic_terms)::int as terms,
-    (select count(*) from public.platform_settings)::int as settings`);
-  assert.deepEqual(counts, { categories: 8, departments: 7, venues: 5, clubs: 6, terms: 2, settings: 6 });
-  const orphanClubs = await one(db, `select count(*)::int n from public.clubs where category_id is null`);
-  assert.equal(orphanClubs.n, 0, 'every seeded club resolved its category');
+  // Migration-owned data: exact.
+  const fixed = await one(db, `select (select count(*) from public.categories)::int as categories,
+                                      (select count(*) from public.platform_settings)::int as settings`);
+  assert.deepEqual(fixed, { categories: 8, settings: 6 });
+  // Seed data is yours to edit: just require that each table got rows.
+  const seeded = await one(db, SEED_COUNTS_SQL);
+  for (const [table, n] of Object.entries(seeded)) assert.ok(n > 0, `seed.sql inserted no ${table}`);
+  const orphanClubs = await one(db, `select name from public.clubs where category_id is null`);
+  assert.equal(orphanClubs, undefined, `club "${orphanClubs?.name}" has an unknown category slug in seed.sql`);
+  const badDept = await one(db, `select count(*)::int n from public.clubs c
+    where c.department_id is null and c.name in ('IEEE Student Branch','Build Club','E-Cell Entrepreneurship Hub','Speaker and Anchors club')`);
+  assert.equal(badDept.n, 0, 'a seeded club references a department code that is not in seed.sql');
 });
 
 test('seed.sql is re-runnable (idempotent)', async () => {
+  const before = await one(db, SEED_COUNTS_SQL);
   const { readFileSync } = await import('node:fs');
   await db.exec(readFileSync(new URL('../../supabase/seed.sql', import.meta.url), 'utf8'));
-  assert.equal((await one(db, 'select count(*)::int n from public.venues')).n, 5);
+  assert.deepEqual(await one(db, SEED_COUNTS_SQL), before);
 });
 
 test('RLS is enabled on every public table (deny-by-default)', async () => {

@@ -113,7 +113,11 @@ The guard only decides **what to show**. If someone deletes it from the JavaScri
 1. Sign in at supabase.com → **New project**. A free plan is fine. Choose a region close to you (e.g. Mumbai).
 2. Save the database password in your password manager. **It never goes in the repo.**
 
-### 7.2 Apply the database (one paste)
+### 7.2 Apply the database
+
+> **Preferred:** the Supabase CLI (`npm run db:push`), which records migration history. See [MIGRATIONS.md](MIGRATIONS.md). The one-paste bundle below does **not** record history, so after using it you must run `migration repair` (MIGRATIONS.md §4).
+
+**One-paste alternative:**
 1. On your machine, generate the bundle (all 6 migrations + seed in one transaction):
 
 ```bash

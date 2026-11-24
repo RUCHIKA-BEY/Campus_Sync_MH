@@ -42,11 +42,34 @@ async function check(name, fn) {
     results.push(['❌', name, err.message]);
   }
 }
-const expectRows = async (table, n) => {
+const readRows = async table => {
   const { data, error } = await supabase.from(table).select('*');
-  if (error) throw new Error(`${error.message} (did the SQL bundle run?)`);
+  if (error) {
+    const hint = error.code === '42501' ? ' (missing GRANT: has migration 20261124000100 been pushed?)' : '';
+    throw new Error(`${error.message}${hint}`);
+  }
+  return data;
+};
+const expectRows = async (table, n) => {
+  const data = await readRows(table);
   if (data.length !== n) throw new Error(`expected ${n} rows, got ${data.length}`);
   return `${data.length} rows`;
+};
+// Seed data is editable, so only require that rows exist.
+const expectSomeRows = async table => {
+  const data = await readRows(table);
+  if (!data.length) throw new Error('no rows (did seed.sql run?)');
+  return `${data.length} rows`;
+};
+// Private tables: protected if the visitor gets NO GRANT (42501) or 0 rows.
+const expectPrivate = async table => {
+  const { data, error } = await supabase.from(table).select('*');
+  if (error) {
+    if (error.code === '42501') return 'refused: no grant for visitors';
+    throw new Error(`unexpected error: ${error.message}`);
+  }
+  if (data.length) throw new Error(`${data.length} private rows visible to a visitor!`);
+  return '0 rows visible';
 };
 
 console.log(`Checking ${new URL(url).host} as an anonymous visitor…\n`);
@@ -60,12 +83,12 @@ await check('Project reachable & Auth settings readable', async () => {
   return `email sign-in on · confirm email ${s.mailer_autoconfirm ? 'OFF (auto-confirm)' : 'ON'}`;
 });
 await check('Public reference data: categories', () => expectRows('categories', 8));
-await check('Public reference data: departments', () => expectRows('departments', 7));
-await check('Public reference data: venues', () => expectRows('venues', 5));
-await check('Public reference data: clubs', () => expectRows('clubs', 6));
-await check('Visitor cannot read profiles (RLS)', () => expectRows('profiles', 0));
-await check('Visitor cannot read academic terms (RLS)', () => expectRows('academic_terms', 0));
-await check('Visitor cannot read audit log (RLS)', () => expectRows('audit_logs', 0));
+await check('Public reference data: departments', () => expectSomeRows('departments'));
+await check('Public reference data: venues', () => expectSomeRows('venues'));
+await check('Public reference data: clubs', () => expectSomeRows('clubs'));
+await check('Visitor cannot read profiles', () => expectPrivate('profiles'));
+await check('Visitor cannot read academic terms', () => expectPrivate('academic_terms'));
+await check('Visitor cannot read audit log', () => expectPrivate('audit_logs'));
 await check('Visitor sees no unpublished events (RLS)', async () => {
   const { data, error } = await supabase.from('events').select('id, status');
   if (error) throw error;

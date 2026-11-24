@@ -7,10 +7,14 @@
     "test:db": "node --test \"tests/db/*.test.js\"",
     "demo:users": "node --env-file=.env scripts/create-demo-users.mjs",
     "db:bundle": "node scripts/bundle-sql.mjs",
-    "check:supabase": "node --env-file-if-exists=.env scripts/check-supabase.mjs"
+    "check:supabase": "node --env-file-if-exists=.env scripts/check-supabase.mjs",
+    "db:list": "supabase migration list --linked",
+    "db:push:dry": "supabase db push --linked --dry-run",
+    "db:push": "supabase db push --linked"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.12",
-    "@supabase/supabase-js": "2.118.0"
+    "@supabase/supabase-js": "2.118.0",
+    "supabase": "2.122.1"
   }
 }

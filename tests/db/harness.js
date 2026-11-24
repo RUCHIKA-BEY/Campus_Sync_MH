@@ -98,7 +98,7 @@ export async function asUser(db, userId, fn) {
 export async function refIds(db) {
   const club = await one(db, `select id from public.clubs where short_name = 'IE'`);
   const club2 = await one(db, `select id from public.clubs where short_name = 'CG'`);
-  const venue = await one(db, `select id from public.venues where name = 'Tech Seminar Hall 1'`);
+  const venue = await one(db, `select id from public.venues where name = 'Seminar Hall 1'`);
   const venue2 = await one(db, `select id from public.venues where name = 'Open Air Amphitheatre'`);
   const category = await one(db, `select id from public.categories where slug = 'technology'`);
   const term = await one(db, `select id from public.academic_terms where name = '2026-27 Odd Semester'`);

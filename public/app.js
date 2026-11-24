@@ -191,7 +191,7 @@ function openTicketModal(id){
       <div class="pass-status-row"><span class="pass-status-icon">⌖</span><span class="pass-status-name">Venue Check-In</span><span class="pass-status-badge pending">Pending Scan at Entrance</span></div>
       <div class="pass-status-row"><span class="pass-status-icon">✓</span><span class="pass-status-name">On-Duty (OD) Clearance</span><span class="pass-status-badge ${event.od?'approved':'not-requested'}">${event.od?'Approved':'Not Requested'}</span></div>
     </div>
-    <p class="pass-disclaimer">Present this QR code to the event coordinator at the venue entrance. Each pass is cryptographically tied to your student record.</p>
+    <p class="pass-disclaimer">Present this QR code to the event coordinator at the venue entrance. This is a sample pass. Secure, server-verified QR check-in is added in a later stage.</p>
   </section>`;
   $('#modal-backdrop').hidden=false;
 }
@@ -202,7 +202,7 @@ function openCreateModal(){
 function registerEvent(id){
   if(!state.registrations.includes(id)) state.registrations.push(id);
   const event=eventById(id);
-  $('#modal-content').innerHTML=`<div class="success-illustration">✓</div><span class="section-kicker">You’re on the list</span><h2 id="modal-title">Registration confirmed</h2><p><strong>${event.title}</strong> is now in your registrations. ${event.od?'Your On-Duty request has been prepared for DSA review.':'Your digital ticket is ready whenever you need it.'}</p><div class="modal-actions"><button class="button button-primary" data-ticket="${event.id}">View ticket</button><button class="button button-secondary" data-action="close-modal">Close</button></div>`;
+  $('#modal-content').innerHTML=`<div class="success-illustration">✓</div><span class="section-kicker">You’re on the list</span><h2 id="modal-title">Registration confirmed</h2><p><strong>${event.title}</strong> is now in your registrations. ${event.od?'This event is OD-eligible; On-Duty requests open once live registration is connected.':'Your digital ticket is ready whenever you need it.'}</p><div class="modal-actions"><button class="button button-primary" data-ticket="${event.id}">View ticket</button><button class="button button-secondary" data-action="close-modal">Close</button></div>`;
   renderRegistrations();
 }
 function setPersona(role,target){
@@ -214,18 +214,22 @@ function setPersona(role,target){
   if(profile) profile.textContent=role==='STUDENT'?'Priya Sharma':role==='ORGANIZER'?'Arjun Patel':role==='DSA'?'Dr. V. Ramanathan':'Campus Administrator';
   navigate(target);
 }
-// Bind each element only once (previously every search keystroke added
-// another listener to the same buttons, so one click ran several times).
-function bindOnce(element,key,handler){
-  if(element.dataset[key])return;
-  element.dataset[key]='1';
-  element.addEventListener('click',handler);
-}
-function bindDynamicEvents(){
-  $$('[data-nav]').forEach(element=>bindOnce(element,'boundNav',()=>navigate(element.dataset.nav)));
-  $$('[data-event]').forEach(element=>bindOnce(element,'boundEvent',()=>openEventModal(element.dataset.event)));
-  $$('[data-ticket]').forEach(element=>bindOnce(element,'boundTicket',()=>openTicketModal(element.dataset.ticket)));
-}
+// EVENT DELEGATION: one listener on the document handles clicks for every
+// [data-nav], [data-event] and [data-ticket] element, including buttons
+// created later (e.g. "View ticket" inside the registration popup).
+// Previously each button got its own listener at start-up, so anything
+// rendered afterwards silently did nothing.
+document.addEventListener('click',event=>{
+  const navEl=event.target.closest('[data-nav]');
+  if(navEl){
+    if(navEl.tagName==='A') event.preventDefault();
+    navigate(navEl.dataset.nav);
+  }
+  const eventEl=event.target.closest('[data-event]');
+  if(eventEl) openEventModal(eventEl.dataset.event);
+  const ticketEl=event.target.closest('[data-ticket]');
+  if(ticketEl) openTicketModal(ticketEl.dataset.ticket);
+});
 
 document.addEventListener('click',event=>{
   const viewButton=event.target.closest('.timetable-toolbar .segmented button');
@@ -263,17 +267,18 @@ document.addEventListener('click',event=>{
   if(event.target.closest('.notification-trigger')) $('#notification-drawer').hidden=false;
   if(action==='close-notifications') $('#notification-drawer').hidden=true;
   if(action==='mark-read') $$('.notification').forEach(item=>item.classList.remove('unread'));
-  const category=event.target.closest('[data-category]');
+  // Only the filter tabs: event cards also carry data-category.
+  const category=event.target.closest('.filter-tab[data-category]');
   if(category){state.category=category.dataset.category;$$('.filter-tab').forEach(tab=>tab.classList.toggle('is-active',tab===category));renderLandingEvents();}
   const tab=event.target.closest('.registration-tabs button');
   if(tab){$$('.registration-tabs button').forEach(item=>item.classList.remove('is-active'));tab.classList.add('is-active');}
 });
 document.addEventListener('input',event=>{
-  if(event.target.id==='event-search'){state.query=event.target.value;renderDiscover();bindDynamicEvents();}
+  if(event.target.id==='event-search'){state.query=event.target.value;renderDiscover();}
   if(event.target.id==='club-search') renderClubs();
 });
 document.addEventListener('change',event=>{
-  if(event.target.id==='discover-category'){state.category=event.target.value;renderDiscover();bindDynamicEvents();}
+  if(event.target.id==='discover-category'){state.category=event.target.value;renderDiscover();}
 });
 document.addEventListener('submit',event=>{
   if(event.target.id==='create-event-form'){event.preventDefault();$('#modal-content').innerHTML='<div class="success-illustration">✓</div><span class="section-kicker">Draft saved</span><h2 id="modal-title">Event draft created</h2><p>Your event is ready for details and review. In a connected CampusSync deployment, this is where it would move into the approval queue.</p><div class="modal-actions"><button class="button button-primary" data-action="close-modal">Done</button></div>';}
@@ -282,7 +287,7 @@ $('#modal-backdrop').addEventListener('click',event=>{if(event.target.id==='moda
 window.addEventListener('hashchange',()=>{const page=window.location.hash.replace('#','');if(document.querySelector(`[data-page="${page}"]`))navigate(page);});
 positionTimetableBlocks();
 renderTimetableView();
-renderLandingEvents();renderDiscover();renderRegistrations();renderClubs();bindDynamicEvents();
+renderLandingEvents();renderDiscover();renderRegistrations();renderClubs();
 
 // Restore any saved session BEFORE the first route decision, so a
 // refresh on #profile doesn't flash the sign-in page.

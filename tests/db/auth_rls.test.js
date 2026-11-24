@@ -97,8 +97,10 @@ test('logged-out visitors cannot read profiles or terms', async () => {
   await isolated(db, async () => {
     await makeUser(db);
     await asUser(db, null, async () => {
-      assert.equal(await count('select * from public.profiles'), 0);
-      assert.equal(await count('select * from public.academic_terms'), 0);
+      // Visitors hold no GRANT on these tables at all (migration 7), so the
+      // request is refused before RLS even runs.
+      await expectFail(db, 'select * from public.profiles', [], PERMISSION_DENIED);
+      await expectFail(db, 'select * from public.academic_terms', [], PERMISSION_DENIED);
       assert.ok(await count('select * from public.categories') > 0, 'categories are public');
     });
   });
@@ -323,10 +325,11 @@ test('students cannot create registrations, OD requests or attendance directly',
     const { a, ev, ra, org } = await seedRegistrationAndOd(db);
     const ev2 = await makeEvent(db, ids, org, { ...PUBLISHED, venue_id: ids.venue2 });
     await asUser(db, a, async () => {
-      await expectFail(db, `insert into public.event_registrations (event_id, student_id, conflict_status) values ($1,$2,'no_conflict')`, [ev2, a], RLS_VIOLATION);
-      await expectFail(db, `insert into public.attendance_records (registration_id, event_id, student_id, method, recorded_by) values ($1,$2,$3,'manual',$3)`, [ra, ev, a], RLS_VIOLATION);
-      // No UPDATE policy: the rows are invisible to UPDATE, so 0 rows change.
-      assert.equal((await db.query(`update public.od_requests set status = 'approved', reviewed_at = now() returning id`)).rows.length, 0);
+      // Workflow tables are read-only for browser roles (no INSERT/UPDATE
+      // grant); writes will only happen inside checked functions.
+      await expectFail(db, `insert into public.event_registrations (event_id, student_id, conflict_status) values ($1,$2,'no_conflict')`, [ev2, a], PERMISSION_DENIED);
+      await expectFail(db, `insert into public.attendance_records (registration_id, event_id, student_id, method, recorded_by) values ($1,$2,$3,'manual',$3)`, [ra, ev, a], PERMISSION_DENIED);
+      await expectFail(db, `update public.od_requests set status = 'approved', reviewed_at = now()`, [], PERMISSION_DENIED);
     });
     assert.equal(await count(`select * from public.od_requests where status = 'approved'`), 0);
   });
@@ -341,8 +344,7 @@ test('OD reviewer (DSA) reads all OD requests; organizer reads only their events
     assert.equal(await asUser(db, org, () => count('select * from public.od_requests')), 2);
     assert.equal(await asUser(db, otherOrg, () => count('select * from public.od_requests')), 0);
     // Even the reviewer cannot approve with a raw UPDATE (decisions go through the Stage 6 RPC):
-    const changed = await asUser(db, dsa, async () => (await db.query(`update public.od_requests set status='approved', reviewed_at=now() returning id`)).rows.length);
-    assert.equal(changed, 0);
+    await asUser(db, dsa, () => expectFail(db, `update public.od_requests set status='approved', reviewed_at=now()`, [], PERMISSION_DENIED));
   });
 });
 
@@ -400,4 +402,50 @@ test('every public table has RLS enabled and at least one policy', async () => {
     where n.nspname = 'public' and c.relkind = 'r'
       and (not c.relrowsecurity or not exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname))`);
   assert.deepEqual(rows, []);
+});
+
+// ======================================================== API grants (migration 7)
+// Since Oct 2026 Supabase grants nothing automatically, so these guard
+// against a future migration forgetting grants (app breaks) or granting
+// too much (security hole).
+test('grants: every table is reachable by logged-in users and by the server role', async () => {
+  const { rows } = await db.query(`
+    select c.relname,
+           has_table_privilege('authenticated', c.oid, 'SELECT') as auth_select,
+           has_table_privilege('service_role',  c.oid, 'SELECT') as service_select
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind = 'r'`);
+  const missing = rows.filter(r => !r.auth_select || !r.service_select).map(r => r.relname);
+  assert.deepEqual(missing, [], `tables missing SELECT grants: ${missing.join(', ')}`);
+});
+
+test('grants: visitors (anon) can only READ the public catalogue', async () => {
+  const { rows } = await db.query(`
+    select c.relname, p.priv
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) as p(priv)
+    where n.nspname = 'public' and c.relkind = 'r'
+      and has_table_privilege('anon', c.oid, p.priv)
+    order by 1, 2`);
+  assert.deepEqual(rows, ['categories', 'clubs', 'departments', 'event_audiences', 'events', 'venues']
+    .map(relname => ({ relname, priv: 'SELECT' })));
+});
+
+test('grants: browser roles can never write workflow state directly', async () => {
+  const forbidden = [
+    ['event_registrations', 'INSERT'], ['event_registrations', 'UPDATE'],
+    ['od_requests', 'INSERT'], ['od_requests', 'UPDATE'],
+    ['attendance_records', 'INSERT'], ['attendance_sessions', 'INSERT'],
+    ['audit_logs', 'INSERT'], ['audit_logs', 'UPDATE'], ['audit_logs', 'DELETE'],
+    ['notifications', 'INSERT'], ['profiles', 'INSERT'],
+  ];
+  for (const [table, priv] of forbidden) {
+    const { has } = await one(db, `select has_table_privilege('authenticated', $1, $2) as has`, [`public.${table}`, priv]);
+    assert.equal(has, false, `authenticated must not have ${priv} on ${table}`);
+  }
+  for (const [table, column] of [['profiles', 'role'], ['profiles', 'is_active'], ['events', 'status'],
+                                 ['events', 'reviewed_by'], ['events', 'published_at'], ['notifications', 'title']]) {
+    const { has } = await one(db, `select has_column_privilege('authenticated', $1, $2, 'UPDATE') as has`, [`public.${table}`, column]);
+    assert.equal(has, false, `authenticated must not UPDATE ${table}.${column}`);
+  }
 });
