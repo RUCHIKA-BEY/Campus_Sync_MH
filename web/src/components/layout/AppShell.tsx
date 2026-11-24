@@ -11,6 +11,7 @@ import { friendlyError } from '../../lib/errors';
 import { useToast } from '../Toaster';
 import { buttonClass, cx } from '../ui';
 import { MAIN_NAV, MOBILE_TABS, ROLE_NAV, type NavItem } from './nav';
+import { notificationLink, timeAgo, useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../../lib/notifications';
 
 function isActive(pathname: string, to: string) {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`) ||
@@ -58,21 +59,50 @@ function DesktopNav({ items }: { items: NavItem[] }) {
 }
 
 function NotificationsMenu() {
-  // Honest placeholder: no fake unread count until notifications are live.
+  // Real in-app notifications (RLS: own inbox only). No count when signed out.
+  const { session } = useAuth();
+  const navigate = useNavigate();
+  const unread = useUnreadCount();
+  const list = useNotifications(15);
+  const markRead = useMarkRead();
+  const markAll = useMarkAllRead();
+  const count = unread.data ?? 0;
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger aria-label="Notifications"
-        className="grid size-10 place-items-center rounded-xl text-plum-soft transition hover:bg-cream hover:text-plum data-[state=open]:bg-cream">
+      <DropdownMenu.Trigger aria-label={count ? `Notifications, ${count} unread` : 'Notifications'}
+        className="relative grid size-10 place-items-center rounded-xl text-plum-soft transition hover:bg-cream hover:text-plum data-[state=open]:bg-cream">
         <Bell className="size-5" />
+        {count > 0 && (
+          <span className="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-terracotta px-1 text-[10px] leading-4 font-bold text-white">
+            {count > 9 ? '9+' : count}
+          </span>
+        )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="end" sideOffset={8}
-          className="z-50 w-80 rounded-2xl border border-line bg-white p-4 shadow-float">
-          <p className="font-display text-base font-bold">Notifications</p>
-          <div className="mt-3 flex items-start gap-3 rounded-xl bg-cream p-3 text-sm text-plum-soft">
-            <BellOff className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <p>No notifications yet. Registration, approval and OD updates will appear here once live notifications are connected.</p>
+          className="z-50 max-h-[70vh] w-[min(92vw,22rem)] overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-float">
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <p className="font-display text-base font-bold">Notifications</p>
+            {count > 0 && (
+              <button type="button" onClick={() => markAll.mutate()} className="text-xs font-semibold text-terracotta-deep hover:underline">Mark all as read</button>
+            )}
           </div>
+          {!isConfigured || !session ? (
+            <p className="m-2 flex items-start gap-3 rounded-xl bg-cream p-3 text-sm text-plum-soft"><BellOff className="mt-0.5 size-4 shrink-0" aria-hidden />Sign in to see your notifications.</p>
+          ) : !list.data?.length ? (
+            <p className="m-2 flex items-start gap-3 rounded-xl bg-cream p-3 text-sm text-plum-soft"><BellOff className="mt-0.5 size-4 shrink-0" aria-hidden />You’re all caught up.</p>
+          ) : list.data.map(n => (
+            <DropdownMenu.Item key={n.id}
+              onSelect={() => { if (!n.is_read) markRead.mutate(n.id); const to = notificationLink(n); if (to) navigate(to); }}
+              className={cx('flex cursor-pointer gap-3 rounded-xl px-3 py-2.5 text-sm outline-none data-[highlighted]:bg-cream', !n.is_read && 'bg-peach/50')}>
+              <span className={cx('mt-1.5 size-2 shrink-0 rounded-full', n.is_read ? 'bg-transparent' : 'bg-terracotta')} aria-hidden />
+              <span className="min-w-0">
+                <span className="block font-semibold">{n.title}</span>
+                <span className="block text-plum-soft">{n.message}</span>
+                <span className="block text-xs text-plum-muted">{timeAgo(n.created_at)}</span>
+              </span>
+            </DropdownMenu.Item>
+          ))}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

@@ -90,8 +90,12 @@ export async function asUser(db, userId, fn) {
   await db.query(`select set_config('request.jwt.claim.sub', $1, true)`, [userId ?? '']);
   try { return await fn(); }
   finally {
-    await db.exec('reset role');
-    await db.query(`select set_config('request.jwt.claim.sub', '', true)`);
+    // If fn() failed, the transaction is aborted and these would fail too,
+    // hiding the real error. SET LOCAL is undone by the rollback anyway.
+    try {
+      await db.exec('reset role');
+      await db.query(`select set_config('request.jwt.claim.sub', '', true)`);
+    } catch { /* keep the original error */ }
   }
 }
 
