@@ -6,14 +6,16 @@ import { useAuth } from '../../auth/AuthProvider';
 import { Button, Card, Kicker, buttonClass } from '../../components/ui';
 import { useToast } from '../../components/Toaster';
 import { isConfigured } from '../../lib/env';
-import { SAMPLE_EVENTS, canRegister, longDate, registrationStatus, seatsLeft, shortDateTime, statusLabel, timeRange } from '../../lib/events';
+import { canRegister, longDate, registrationStatus, seatsLeft, shortDateTime, statusLabel, timeRange } from '../../lib/events';
+import { useEventById } from '../../lib/publicEvents';
+import { Skeleton } from '../../components/ui';
 import { useDemoRegistrations } from '../../lib/demo';
 import { BookmarkButton, OdBadge, SampleNotice, StatusBadge, useNow } from './eventUi';
 import { TicketDialog } from './TicketDialog';
 
 export function EventDetailPage() {
   const { id } = useParams();
-  const event = SAMPLE_EVENTS.find(e => e.id === id);
+  const { event, isLoading } = useEventById(id);
   const now = useNow();
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -23,6 +25,9 @@ export function EventDetailPage() {
   const [ticketOpen, setTicketOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
+  if (isLoading) {
+    return <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6"><Skeleton className="h-72 rounded-[28px]" /><Skeleton className="mt-6 h-10 w-2/3" /></div>;
+  }
   if (!event) {
     return (
       <div className="mx-auto grid max-w-xl place-items-center gap-4 px-4 py-24 text-center">
@@ -36,7 +41,9 @@ export function EventDetailPage() {
 
   const status = registrationStatus(event, now);
   const registration = demo.find(event.id);
-  const fill = Math.min(100, Math.round((event.registeredCount / event.capacity) * 100));
+  // Seat counts are unknown for real events until registration exists (Stage 6).
+  const fill = event.registeredCount === null ? null : Math.min(100, Math.round((event.registeredCount / event.capacity) * 100));
+  const left = seatsLeft(event);
 
   const onRegister = () => {
     if (isConfigured && !session) {
@@ -79,7 +86,7 @@ export function EventDetailPage() {
               [CalendarClock, 'Date & time', `${longDate(event.startsAt)}`, timeRange(event)],
               [MapPin, 'Venue', event.venue, `${event.scope === 'university' ? 'University-wide' : event.scope === 'department' ? 'Department' : 'Club'} event`],
               [CalendarRange, 'Registration window', `Opens ${shortDateTime(event.registrationOpensAt)}`, `Closes ${shortDateTime(event.registrationClosesAt)}`],
-              [UsersRound, 'Capacity', `${event.registeredCount} / ${event.capacity} registered`, `${seatsLeft(event)} seats left`],
+              [UsersRound, 'Capacity', event.registeredCount === null ? `${event.capacity} places` : `${event.registeredCount} / ${event.capacity} registered`, left === null ? 'Live seat count arrives with registration' : `${left} seats left`],
             ].map(([Icon, label, a, b]) => {
               const I = Icon as typeof MapPin;
               return (
@@ -106,17 +113,22 @@ export function EventDetailPage() {
               <p><strong>On-Duty eligible.</strong> If this event clashes with your classes, you’ll be able to request OD after registering, once live registration is connected.</p>
             </section>
           )}
-          <SampleNotice className="mt-6" />
+          {event.lifecycle === 'cancelled' && (
+            <p className="mt-6 rounded-2xl border border-line bg-cream p-4 text-sm"><strong>This event was cancelled.</strong> {event.cancellationReason}</p>
+          )}
+          {event.isSample && <SampleNotice className="mt-6" />}
         </div>
 
         {/* Sticky action card */}
         <aside className="lg:pt-24">
           <Card className="sticky top-24 p-5 shadow-lift">
+            {fill !== null && (<>
             <p className="text-sm font-semibold text-plum-soft">Seats</p>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-mauve" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={fill} aria-label="Seats filled">
               <motion.div initial={{ width: 0 }} animate={{ width: `${fill}%` }} transition={{ duration: 0.8, ease: 'easeOut' }}
                           className="h-full rounded-full bg-gradient-to-r from-terracotta to-terracotta-deep" />
             </div>
+            </>)}
             <p className="mt-2 text-sm text-plum-soft">{statusLabel(status, event)}</p>
 
             <div className="mt-5 grid gap-2.5">
@@ -133,6 +145,9 @@ export function EventDetailPage() {
                     <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>
                   )}
                 </>
+              ) : canRegister(status) && !event.isSample ? (
+                // Real event: registration with the timetable clash check is the next stage.
+                <Button size="lg" disabled>Registration opens soon</Button>
               ) : canRegister(status) ? (
                 <Button size="lg" onClick={onRegister}>Register now</Button>
               ) : (

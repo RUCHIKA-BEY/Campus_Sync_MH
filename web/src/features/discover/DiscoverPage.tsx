@@ -5,7 +5,9 @@ import { Bookmark, Search, SearchX, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { Button, Kicker, Select, cx } from '../../components/ui';
 import { isConfigured } from '../../lib/env';
-import { DEFAULT_FILTERS, SAMPLE_EVENTS, filterEvents, matchInterests, type EventFilters, type When } from '../../lib/events';
+import { DEFAULT_FILTERS, filterEvents, matchInterests, type CampusEvent, type EventFilters, type When } from '../../lib/events';
+import { useEventFeed } from '../../lib/publicEvents';
+import { Skeleton } from '../../components/ui';
 import { useSavedEvents } from '../../lib/demo';
 import { useCategories, useMyInterestIds } from '../../lib/queries';
 import { SampleNotice, useNow } from '../events/eventUi';
@@ -46,10 +48,11 @@ export function DiscoverPage() {
   const now = useNow();
   const [filters, update, reset] = useFilters();
   const { savedIds } = useSavedEvents();
-  const events = SAMPLE_EVENTS;
+  const feed = useEventFeed();
+  const events = feed.events;
   const results = useMemo(() => filterEvents(events, filters, now, savedIds), [events, filters, now, savedIds]);
   const featured = useMemo(
-    () => events.filter(e => e.featured && Date.parse(e.endsAt) > now.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
+    () => events.filter(e => e.featured && e.lifecycle === 'published' && Date.parse(e.endsAt) > now.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
     [events, now]);
   const categories = useMemo(() => {
     const seen = new Map<string, string>();
@@ -69,11 +72,12 @@ export function DiscoverPage() {
               What’s on, <span className="text-terracotta">worth showing up for.</span>
             </h1>
           </div>
-          <SampleNotice className="max-w-md" />
+          {feed.isSample && <SampleNotice className="max-w-md" />}
         </div>
 
-        {!isFiltered && <FeaturedSpotlight events={featured} now={now} />}
-        {!isFiltered && <ForYou />}
+        {feed.isLoading && <Skeleton className="h-[420px] rounded-[28px]" />}
+        {!isFiltered && <FeaturedSpotlight events={featured.length ? featured : events.filter(e => e.lifecycle === 'published' && Date.parse(e.endsAt) > now.getTime()).slice(0, 3)} now={now} />}
+        {!isFiltered && <ForYou events={events} />}
 
         {/* ---------------- Sticky discovery tools ---------------- */}
         <section aria-label="Find events" className="sticky top-16 z-30 -mx-4 mt-10 border-y border-line/80 bg-ivory/90 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
@@ -151,7 +155,7 @@ export function DiscoverPage() {
 }
 
 /** "For you": a transparent rule (your saved interests ∩ event category). */
-function ForYou() {
+function ForYou({ events }: { events: CampusEvent[] }) {
   const now = useNow();
   const { session, profile } = useAuth();
   const categories = useCategories();
@@ -168,7 +172,7 @@ function ForYou() {
   }
   if (!interests.data || !categories.data) return null;
   const slugs = new Set(categories.data.filter(c => interests.data.has(c.id)).map(c => c.slug));
-  const picks = matchInterests(SAMPLE_EVENTS, slugs, now).slice(0, 3);
+  const picks = matchInterests(events, slugs, now).slice(0, 3);
   if (!picks.length) return null;
   const names = categories.data.filter(c => slugs.has(c.slug)).map(c => c.name).join(', ');
   return (

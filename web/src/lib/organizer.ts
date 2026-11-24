@@ -24,7 +24,7 @@ export interface Venue { id: string; name: string; building: string | null; capa
 export interface OrgEvent {
   id: string; club_id: string; title: string; description: string; category_id: string; event_type: EventType; scope: EventScope;
   venue_id: string | null; starts_at: string; ends_at: string; registration_opens_at: string; registration_closes_at: string;
-  capacity: number; od_eligible: boolean; status: EventStatus; review_note: string | null;
+  capacity: number; od_eligible: boolean; status: EventStatus; review_note: string | null; cancellation_reason: string | null;
   venue: { name: string } | null; category: { name: string } | null;
 }
 
@@ -67,7 +67,7 @@ export function useClubEvents(clubIds: string[]) {
     enabled: Boolean(supabase && clubIds.length),
     queryFn: async (): Promise<OrgEvent[]> => {
       const { data, error } = await requireSupabase().from('events')
-        .select('id, club_id, title, description, category_id, event_type, scope, venue_id, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, status, review_note, venue:venues(name), category:categories(name)')
+        .select('id, club_id, title, description, category_id, event_type, scope, venue_id, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, status, review_note, cancellation_reason, venue:venues(name), category:categories(name)')
         .in('club_id', clubIds).order('starts_at');
       if (error) throw error;
       return data as unknown as OrgEvent[];

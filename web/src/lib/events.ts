@@ -22,11 +22,25 @@ export interface CampusEvent {
   registrationOpensAt: string;
   registrationClosesAt: string;
   capacity: number;
-  registeredCount: number;
+  /** null = not known yet (real events until Stage 6 adds registrations). */
+  registeredCount: number | null;
   odEligible: boolean;
   featured: boolean;
   scope: 'club' | 'department' | 'university';
+  /** Lifecycle of a PUBLIC event (drafts/proposals are never shown here). */
+  lifecycle: 'published' | 'completed' | 'cancelled';
+  cancellationReason?: string | null;
+  isSample: boolean;
 }
+
+export const CATEGORY_IMAGE: Record<string, string> = {
+  hackathons: '/assets/event_hackathon_1793037313961.jpg',
+  research: '/assets/event_hackathon_1793037313961.jpg',
+  technology: '/assets/event_robotics_1793037314638.jpg',
+  music: '/assets/event_arts_music_1793037314690.jpg',
+  'arts-culture': '/assets/event_arts_music_1793037314690.jpg',
+};
+export const DEFAULT_EVENT_IMAGE = '/assets/hero_campus_life_1793037312856.jpg';
 
 const IMG = {
   hackathon: '/assets/event_hackathon_1793037313961.jpg',
@@ -35,7 +49,9 @@ const IMG = {
   campus: '/assets/hero_campus_life_1793037312856.jpg',
 };
 
-export const SAMPLE_EVENTS: CampusEvent[] = [
+type SampleSeed = Omit<CampusEvent, 'isSample' | 'lifecycle'>;
+
+const SAMPLE_SEED: SampleSeed[] = [
   {
     id: 'hackgrid', title: 'HackGrid 2026: 24h Campus Hackathon',
     description: 'Build boldly, collaborate with peers, and turn your sharpest ideas into a campus-ready prototype. Mentors, midnight snacks and a demo stage.',
@@ -110,26 +126,29 @@ export const SAMPLE_EVENTS: CampusEvent[] = [
   },
 ];
 
+export const SAMPLE_EVENTS: CampusEvent[] = SAMPLE_SEED.map(e => ({ ...e, isSample: true, lifecycle: 'published' }));
+
 // ---------------------------------------------------------------------
 // Registration status (computed, never stored)
 // ---------------------------------------------------------------------
-export type RegistrationStatus = 'open' | 'closing-soon' | 'full' | 'not-open' | 'closed' | 'in-progress' | 'ended';
+export type RegistrationStatus = 'open' | 'closing-soon' | 'full' | 'not-open' | 'closed' | 'in-progress' | 'ended' | 'cancelled';
 
 const CLOSING_SOON_MS = 48 * 60 * 60 * 1000;
 
 export function registrationStatus(e: CampusEvent, now: Date): RegistrationStatus {
   const t = now.getTime();
-  if (t >= Date.parse(e.endsAt)) return 'ended';
+  if (e.lifecycle === 'cancelled') return 'cancelled';
+  if (t >= Date.parse(e.endsAt) || e.lifecycle === 'completed') return 'ended';
   if (t >= Date.parse(e.startsAt)) return 'in-progress';
   if (t < Date.parse(e.registrationOpensAt)) return 'not-open';
   if (t >= Date.parse(e.registrationClosesAt)) return 'closed';
-  if (e.registeredCount >= e.capacity) return 'full';
+  if (e.registeredCount !== null && e.registeredCount >= e.capacity) return 'full';
   if (Date.parse(e.registrationClosesAt) - t <= CLOSING_SOON_MS) return 'closing-soon';
   return 'open';
 }
 
 export const canRegister = (s: RegistrationStatus) => s === 'open' || s === 'closing-soon';
-export const seatsLeft = (e: CampusEvent) => Math.max(0, e.capacity - e.registeredCount);
+export const seatsLeft = (e: CampusEvent): number | null => e.registeredCount === null ? null : Math.max(0, e.capacity - e.registeredCount);
 
 // ---------------------------------------------------------------------
 // Filtering
@@ -206,12 +225,13 @@ export const shortDateTime = (iso: string) => `${shortDateFmt.format(new Date(is
 
 export function statusLabel(s: RegistrationStatus, e: CampusEvent): string {
   switch (s) {
-    case 'open': return `${seatsLeft(e)} seats left`;
+    case 'open': { const left = seatsLeft(e); return left === null ? 'Registration open' : `${left} seats left`; }
     case 'closing-soon': return `Closes ${shortDateTime(e.registrationClosesAt)}`;
     case 'full': return 'Event full';
     case 'not-open': return `Opens ${shortDate(e.registrationOpensAt)}`;
     case 'closed': return 'Registration closed';
     case 'in-progress': return 'Happening now';
     case 'ended': return 'Event ended';
+    case 'cancelled': return 'Cancelled';
   }
 }

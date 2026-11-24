@@ -86,6 +86,31 @@ Fixes:
 
 **Local result: 63 / 63 passed.** Live result before pushing migration 7: 6/11 checks pass. The 5 failures are the public tables that migration 7 opens. Re-run after `npm run db:push` (see MIGRATIONS.md §4).
 
+## Stage 5 results (event workflow)
+
+**Database: 78 / 78 passed** (15 new tests in `tests/db/event_workflow.test.js`; dates are relative to "now", so they don't expire).
+
+| Requirement | Result |
+|---|---|
+| Valid proposal submitted; DSA notified; audited | ✔ |
+| Invalid proposals refused: no venue, capacity over venue, start in the past, deadline passed | ✔ each with its own message |
+| Organizer of another club, student, DSA cannot submit | ✔ |
+| Venue conflict names the other event; adjacent slot accepted | ✔ |
+| Double submission refused | ✔ |
+| Organizer cannot start review or decide | ✔ |
+| Rejection without reason refused; with reason → organizer notified; revise → edit → resubmit clears the old review | ✔ |
+| Request changes → edit → resubmit | ✔ |
+| Approve → publish; followers notified; visitors can see it only after publishing | ✔ |
+| Unauthorized publication refused; publish before approval refused | ✔ |
+| Illegal status jumps refused even for the database owner | ✔ |
+| Cancellation needs a reason; registrants notified; stays public as cancelled; no double cancel | ✔ |
+| Complete only after the event ends | ✔ |
+| Internal helpers not callable from the browser | ✔ |
+
+**Frontend: 40 / 40 unit tests** (5 new: database row → event card mapping, no invented seat counts, cancelled events can't be registered for). Browser: Discover falls back to labelled samples while nothing is published, and unknown event links show "Event not found".
+
+**Not yet verified:** the signed-in workflow on the live project. That needs migration 8 pushed and a run-through with the demo accounts.
+
 ## Not yet tested (and why)
 
 - **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.

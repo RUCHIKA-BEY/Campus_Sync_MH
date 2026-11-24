@@ -7,7 +7,7 @@ import { useToast } from '../../components/Toaster';
 import { EmptyState, FormStatus, PageHeader, Skeleton, buttonClass, cx } from '../../components/ui';
 import { isConfigured } from '../../lib/env';
 import { friendlyError } from '../../lib/errors';
-import { SAMPLE_EVENTS } from '../../lib/events';
+import { useEventFeed } from '../../lib/publicEvents';
 import { useClubs, useMyFollowedClubIds, useToggleFollow } from '../../lib/queries';
 import type { Club } from '../../lib/types';
 
@@ -60,7 +60,8 @@ export function ClubsPage() {
 }
 
 function ClubCard({ club, tint, index }: { club: Club; tint: string; index: number }) {
-  const upcoming = SAMPLE_EVENTS.filter(e => e.club === club.name && Date.parse(e.endsAt) > Date.now()).length;
+  const feed = useEventFeed();
+  const upcoming = feed.events.filter(e => e.club === club.name && e.lifecycle === 'published' && Date.parse(e.endsAt) > Date.now()).length;
   return (
     <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * 0.04 }}
       className="group flex flex-col rounded-[22px] border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-lift">
@@ -73,7 +74,7 @@ function ClubCard({ club, tint, index }: { club: Club; tint: string; index: numb
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-4 text-xs font-semibold text-plum-soft">
         <span className="rounded-full bg-mauve px-2.5 py-1 text-plum">{club.category?.name ?? 'Club'}</span>
         {upcoming > 0
-          ? <Link to={`/discover?club=${encodeURIComponent(club.name)}`} className="text-terracotta-deep hover:underline">{upcoming} sample {upcoming === 1 ? 'event' : 'events'} →</Link>
+          ? <Link to={`/discover?club=${encodeURIComponent(club.name)}`} className="text-terracotta-deep hover:underline">{upcoming} {feed.isSample ? 'sample ' : ''}{upcoming === 1 ? 'event' : 'events'} →</Link>
           : <span>No upcoming events</span>}
       </div>
     </motion.article>

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Bookmark, CalendarCheck2, History, Ticket } from 'lucide-react';
 import { EmptyState, PageHeader, buttonClass, cx } from '../../components/ui';
 import { SAMPLE_EVENTS, longDate, timeRange, type CampusEvent } from '../../lib/events';
+import { usePublicEvents } from '../../lib/publicEvents';
 import { useDemoRegistrations, useSavedEvents, type DemoRegistration } from '../../lib/demo';
 import { SampleNotice, StatusBadge, useNow } from '../events/eventUi';
 import { TicketDialog } from '../events/TicketDialog';
@@ -15,18 +16,20 @@ export function RegistrationsPage() {
   const { regs } = useDemoRegistrations();
   const { savedIds } = useSavedEvents();
   const [tab, setTab] = useState<Tab>('upcoming');
+  const realEvents = usePublicEvents().data;
   const [ticket, setTicket] = useState<{ event: CampusEvent; reg: DemoRegistration } | null>(null);
 
   const lists = useMemo(() => {
-    const byId = new Map(SAMPLE_EVENTS.map(e => [e.id, e]));
+    const all = [...SAMPLE_EVENTS, ...(realEvents ?? [])];
+    const byId = new Map(all.map(e => [e.id, e]));
     const registered = regs.map(r => ({ reg: r, event: byId.get(r.eventId) })).filter((x): x is { reg: DemoRegistration; event: CampusEvent } => Boolean(x.event));
     const t = now.getTime();
     return {
       upcoming: registered.filter(x => Date.parse(x.event.endsAt) > t).sort((a, b) => Date.parse(a.event.startsAt) - Date.parse(b.event.startsAt)),
       past: registered.filter(x => Date.parse(x.event.endsAt) <= t),
-      saved: SAMPLE_EVENTS.filter(e => savedIds.has(e.id)).map(event => ({ event, reg: regs.find(r => r.eventId === event.id) })),
+      saved: all.filter(e => savedIds.has(e.id)).map(event => ({ event, reg: regs.find(r => r.eventId === event.id) })),
     };
-  }, [regs, savedIds, now]);
+  }, [regs, savedIds, now, realEvents]);
 
   const tabs: Array<{ id: Tab; label: string; icon: typeof Ticket }> = [
     { id: 'upcoming', label: 'Upcoming', icon: CalendarCheck2 },

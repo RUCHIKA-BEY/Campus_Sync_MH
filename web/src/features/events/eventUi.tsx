@@ -17,10 +17,10 @@ export function useNow(): Date {
 }
 
 const STATUS_TONE: Record<RegistrationStatus, Parameters<typeof Badge>[0]['tone']> = {
-  open: 'sage', 'closing-soon': 'amber', full: 'muted', 'not-open': 'neutral', closed: 'muted', 'in-progress': 'terracotta', ended: 'muted',
+  open: 'sage', 'closing-soon': 'amber', full: 'muted', 'not-open': 'neutral', closed: 'muted', 'in-progress': 'terracotta', ended: 'muted', cancelled: 'muted',
 };
 const STATUS_ICON: Record<RegistrationStatus, typeof Users> = {
-  open: Users, 'closing-soon': Clock3, full: Lock, 'not-open': Clock3, closed: Lock, 'in-progress': CircleDot, ended: Lock,
+  open: Users, 'closing-soon': Clock3, full: Lock, 'not-open': Clock3, closed: Lock, 'in-progress': CircleDot, ended: Lock, cancelled: Lock,
 };
 
 export function StatusBadge({ event, now, className }: { event: CampusEvent; now: Date; className?: string }) {

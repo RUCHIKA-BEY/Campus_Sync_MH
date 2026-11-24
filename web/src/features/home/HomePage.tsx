@@ -3,7 +3,8 @@ import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowRight, CalendarCheck2, Compass, QrCode, BadgeCheck, Sparkles } from 'lucide-react';
 import { Kicker, buttonClass } from '../../components/ui';
-import { SAMPLE_EVENTS, longDate, timeRange } from '../../lib/events';
+import { longDate, timeRange } from '../../lib/events';
+import { useEventFeed } from '../../lib/publicEvents';
 import { StatusBadge, useNow } from '../events/eventUi';
 import { EventCard } from '../discover/EventCard';
 
@@ -14,8 +15,9 @@ const INTERESTS = [
 
 export function HomePage() {
   const now = useNow();
-  const upcoming = useMemo(() => SAMPLE_EVENTS.filter(e => Date.parse(e.endsAt) > now.getTime())
-    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)), [now]);
+  const feed = useEventFeed();
+  const upcoming = useMemo(() => feed.events.filter(e => e.lifecycle === 'published' && Date.parse(e.endsAt) > now.getTime())
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)), [feed.events, now]);
   const hero = upcoming.find(e => e.featured) ?? upcoming[0];
 
   return (
@@ -94,7 +96,7 @@ export function HomePage() {
         <div className="mt-8 grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-3">
           {upcoming.slice(0, 3).map(e => <EventCard key={e.id} event={e} now={now} />)}
         </div>
-        <p className="mt-4 text-xs text-plum-muted">Showing sample events until live club events are connected.</p>
+        {feed.isSample && <p className="mt-4 text-xs text-plum-muted">Showing sample events until clubs publish their first events.</p>}
       </section>
 
       <section className="border-t border-line bg-cream/60">

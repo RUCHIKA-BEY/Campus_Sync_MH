@@ -111,7 +111,10 @@ test('events: cancellation needs a reason; publishing records published_at', asy
     const org = await makeUser(db, 'organizer');
     const ev = await makeEvent(db, ids, org);
     await expectFail(db, `update public.events set status='cancelled', cancelled_at=now() where id=$1`, [ev], 'events_cancellation_reason_required');
-    await expectFail(db, `update public.events set status='published', submitted_at=now() where id=$1`, [ev], 'events_published_recorded');
+    // Publishing is only legal from 'approved' (transition trigger), so start there.
+    const dsa = await makeUser(db, 'dsa');
+    const approved = await makeEvent(db, ids, org, { status: 'approved', submitted_at: '2026-11-11 10:00+05:30', reviewed_by: dsa, reviewed_at: '2026-11-12 10:00+05:30' });
+    await expectFail(db, `update public.events set status='published' where id=$1`, [approved], 'events_published_recorded');
   });
 });
 

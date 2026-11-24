@@ -1,5 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical } from 'lucide-react';
+import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban } from 'lucide-react';
+import { ReasonDialog } from '../../components/ReasonDialog';
+import { useCancelEvent, useCompleteEvent, usePublishEvent, useReopenEvent, useSubmitEvent } from '../../lib/workflow';
 import { useAuth } from '../../auth/AuthProvider';
 import { Badge, Button, Card, EmptyState, Field, FormStatus, Input, PageHeader, Select, Skeleton } from '../../components/ui';
 import { Modal } from '../../components/Modal';
@@ -40,7 +42,7 @@ export function OrganizerPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <PageHeader kicker="Organizer workspace" title={`Hello, ${profile?.full_name.split(' ')[0] ?? 'organizer'}.`}
         actions={clubIds.length > 0 && <Button onClick={() => setEditing('new')}><CalendarPlus className="size-4" />New event draft</Button>}>
-        Draft events for your clubs. Submitting for DSA approval arrives in the next stage.
+        Draft events for your clubs, submit them for DSA approval, then publish once approved.
       </PageHeader>
 
       {clubs.isError ? <FormStatus kind="error">{friendlyError(clubs.error)}</FormStatus>
@@ -85,9 +87,20 @@ export function OrganizerPage() {
 
 function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: string; onEdit: () => void }) {
   const remove = useDeleteDraft();
+  const submit = useSubmitEvent();
+  const reopen = useReopenEvent();
+  const publish = usePublishEvent();
+  const complete = useCompleteEvent();
+  const cancel = useCancelEvent();
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const editable = EDITABLE.includes(event.status);
+  const ended = Date.parse(event.ends_at) <= Date.now();
+  // Run an action and report the database's answer in plain language.
+  const act = (m: { mutate: (v: string, o: object) => void }, ok: string) =>
+    m.mutate(event.id, { onSuccess: () => toast(ok, 'success'), onError: (e: unknown) => toast(friendlyError(e), 'error') });
+
   return (
     <Card className="flex flex-wrap items-center gap-4 p-4">
       <div className="min-w-0 flex-1 basis-72">
@@ -103,6 +116,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
           <span>Capacity {event.capacity}</span>
         </p>
         {event.review_note && <p className="mt-2 rounded-xl bg-peach px-3 py-2 text-xs text-terracotta-deep"><strong>DSA note:</strong> {event.review_note}</p>}
+        {event.status === 'cancelled' && event.cancellation_reason && <p className="mt-2 text-xs text-plum-soft">Cancelled: {event.cancellation_reason}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {editable && <Button variant="secondary" size="sm" onClick={onEdit}><FilePen className="size-4" />Edit</Button>}
@@ -113,11 +127,34 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
           </>
         ) : <Button variant="ghost" size="sm" onClick={() => setConfirm(true)} aria-label={`Delete ${event.title}`}><Trash2 className="size-4" /></Button>)}
         {editable && (
-          <span title="Submitting goes through a checked database function, added in Stage 5.">
-            <Button size="sm" disabled><Send className="size-4" />Submit for approval</Button>
-          </span>
+          <Button size="sm" loading={submit.isPending} onClick={() => act(submit, 'Submitted for DSA review.')}>
+            <Send className="size-4" />{event.status === 'changes_requested' ? 'Resubmit' : 'Submit for approval'}
+          </Button>
+        )}
+        {event.status === 'rejected' && (
+          <Button variant="secondary" size="sm" loading={reopen.isPending} onClick={() => act(reopen, 'Reopened as a draft. Edit and resubmit when ready.')}>
+            <RotateCcw className="size-4" />Revise as draft
+          </Button>
+        )}
+        {event.status === 'approved' && (
+          <Button size="sm" loading={publish.isPending} onClick={() => act(publish, 'Published! It’s now live on Discover.')}><Megaphone className="size-4" />Publish</Button>
+        )}
+        {event.status === 'published' && ended && (
+          <Button variant="secondary" size="sm" loading={complete.isPending} onClick={() => act(complete, 'Marked as completed.')}><CheckCircle2 className="size-4" />Mark completed</Button>
+        )}
+        {['submitted', 'under_review', 'changes_requested', 'approved', 'published'].includes(event.status) && (
+          <Button variant="ghost" size="sm" onClick={() => setCancelling(true)} className="text-terracotta-deep"><Ban className="size-4" />Cancel event</Button>
         )}
       </div>
+      {cancelling && (
+        <ReasonDialog title={`Cancel “${event.title}”?`} label="Reason (shown to registered students)" confirmLabel="Cancel event"
+          description={event.status === 'published' ? 'Everyone registered will be notified.' : undefined}
+          onClose={() => setCancelling(false)}
+          onConfirm={async reason => {
+            try { await cancel.mutateAsync({ id: event.id, reason }); toast('Event cancelled.', 'success'); }
+            catch (e) { throw new Error(friendlyError(e)); }
+          }} />
+      )}
     </Card>
   );
 }
