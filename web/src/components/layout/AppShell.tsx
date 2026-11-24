@@ -103,6 +103,12 @@ function NotificationsMenu() {
               </span>
             </DropdownMenu.Item>
           ))}
+          {isConfigured && session && (
+            <DropdownMenu.Item onSelect={() => navigate('/notifications')}
+              className="mt-1 block cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-semibold text-terracotta-deep outline-none data-[highlighted]:bg-cream">
+              See all notifications
+            </DropdownMenu.Item>
+          )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

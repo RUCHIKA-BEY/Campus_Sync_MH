@@ -170,8 +170,35 @@ It then returns the student's **name and registration number**, which the organi
 | A friend showing your **screenshot** | Partly | The pass is static (not a rotating code). The organizer sees the registered name on every scan to catch this. A screenshot-proof rotating QR is **not** implemented |
 | Organizer marks someone present who wasn't there | Audited | Manual marks and revocations are in the audit log |
 
-## 9. Coming next (Stage 8)
+## 9. Notifications (Stage 8)
 
-- Notification centre: list, unread count, mark read and mark all read (every workflow above already creates notifications).
-- Role dashboards and analytics from aggregate database queries.
-- Personalised recommendations (interests + past registrations + timetable fit).
+- Every workflow writes in-app notifications through `notify()`, with a **dedupe key**, so a retried request never creates a duplicate.
+- The header bell shows the **unread count** (a COUNT query, refreshed every minute), the latest 15 notifications with links to the right page, and **Mark all as read**. `/notifications` keeps the full history.
+- RLS: you can read only your own notifications and change only `is_read`. **Email and push are not implemented**; the app never claims they are.
+
+## 10. Dashboards (Stage 8, migration `20261124000500_dashboards_and_recommendations.sql`)
+
+One aggregate database function per role. Each checks the caller's role first and returns all of that role's numbers in a single request, so the browser never downloads tables just to count rows.
+
+| Function | Who | Shows |
+|---|---|---|
+| `student_dashboard()` | any signed-in user (about themselves) | upcoming registrations, OD pending/approved, events attended, clubs followed, active clubs, open events, this term's classes, interests |
+| `organizer_dashboard()` | organizers (their managed clubs only) | events by status, active registrations, open seats, **attendance rate** (checked in ÷ registered, past events), upcoming events with fill and check-ins |
+| `dsa_dashboard()` | DSA, admin | proposals awaiting review, decisions in the last 30 days, **average hours to decide**, OD pending and decided |
+| `admin_dashboard()` | admin | users by role, clubs, venues, events by status, registrations, attendance rate, OD by status, **registrations per day (14 days)**, events by category |
+
+The admin charts are plain SVG (no chart library), one validated colour, with hover values and a "Show as table" view.
+
+## 11. Recommendations (Stage 8, `get_recommendations`)
+
+Transparent and rule-based; no AI. Candidates are published events that are **open for registration now**, start within 60 days, aren't full, and that you haven't registered for.
+
+| Signal | Points |
+|---|---|
+| Category is one of your interests | +3 |
+| Organized by a club you follow | +2 |
+| Same category as events you registered for before | +1 |
+| Fits your timetable (no class clash) | +2 |
+| Partly clashes with a class | −1 |
+
+Only events scoring above 0 are suggested, highest first. Every card shows its **reasons** ("Matches your interests", "Fits your timetable"…). Only your own data is used, never anything about other students. The timetable check reuses the same `_timetable_conflict` function as registration.

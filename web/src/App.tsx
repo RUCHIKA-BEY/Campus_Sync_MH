@@ -23,6 +23,7 @@ const TimetablePage = page(() => import('./features/timetable/TimetablePage'), '
 const OrganizerPage = page(() => import('./features/organizer/OrganizerPage'), 'OrganizerPage');
 const DsaPage = page(() => import('./features/dsa/DsaPage'), 'DsaPage');
 const AdminPage = page(() => import('./features/admin/AdminPage'), 'AdminPage');
+const NotificationsPage = page(() => import('./features/notifications/NotificationsPage'), 'NotificationsPage');
 const NotFoundPage = page(() => import('./features/misc/StatusPages'), 'NotFoundPage');
 
 const router = createBrowserRouter([
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/registrations', element: <Protected access={{ kind: 'signed-in' }}><RegistrationsPage /></Protected> },
       { path: '/profile', element: <Protected access={{ kind: 'signed-in' }}><ProfilePage /></Protected> },
+      { path: '/notifications', element: <Protected access={{ kind: 'signed-in' }}><NotificationsPage /></Protected> },
       { path: '/timetable', element: <Protected access={{ kind: 'signed-in' }}><TimetablePage /></Protected> },
       { path: '/organizer', element: <Protected access={{ kind: 'role', roles: ['organizer'] }}><OrganizerPage /></Protected> },
       { path: '/dsa', element: <Protected access={{ kind: 'role', roles: ['dsa'] }}><DsaPage /></Protected> },

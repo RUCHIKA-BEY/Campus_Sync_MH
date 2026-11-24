@@ -10,7 +10,7 @@ describe('decideAccess (UI route guard; the database enforces real access)', () 
   it('signed-in pages send visitors to /login', () =>
     expect(decideAccess({ kind: 'signed-in' }, true, false, null)).toEqual({ allow: false, redirect: '/login', reason: 'sign-in' }));
   it('a student cannot open the admin console and is sent home', () =>
-    expect(decideAccess({ kind: 'role', roles: ['admin'] }, true, true, 'student')).toEqual({ allow: false, redirect: '/discover', reason: 'role' }));
+    expect(decideAccess({ kind: 'role', roles: ['admin'] }, true, true, 'student')).toEqual({ allow: false, redirect: '/', reason: 'role' }));
   it('an organizer opening the DSA desk goes to their own console', () =>
     expect(decideAccess({ kind: 'role', roles: ['dsa'] }, true, true, 'organizer')).toMatchObject({ redirect: '/organizer' }));
   it('signed in but profile unavailable gets no role pages', () =>

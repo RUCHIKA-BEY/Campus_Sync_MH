@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Building2, CalendarRange, ClipboardList, GraduationCap, ScrollText, Search, ShieldCheck, Trash2, UserPlus, Users, UsersRound, FlaskConical } from 'lucide-react';
+import { Building2, CalendarRange, ClipboardList, GraduationCap, ScrollText, Search, ShieldCheck, Trash2, UserPlus, Users, UsersRound, FlaskConical, Ticket, Percent } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { Badge, Button, Card, EmptyState, FormStatus, PageHeader, Select, Skeleton, cx } from '../../components/ui';
 import { StatCard } from '../../components/StatCard';
+import { BarTimeline, HBarChart } from '../../components/charts';
+import { useAdminDashboard } from '../../lib/dashboards';
 import { Tabs } from '../../components/Tabs';
 import { useToast } from '../../components/Toaster';
 import { isConfigured } from '../../lib/env';
 import { friendlyError } from '../../lib/errors';
 import { ROLE_LABELS, type AppRole } from '../../lib/types';
-import { type ClubWithMembers, useAddClubManager, useAdminStats, useAllUsers, useAuditLog, useClubsWithMembers, useRemoveMember, useSetActive, useSetRole } from '../../lib/admin';
+import { type ClubWithMembers, useAddClubManager, useAllUsers, useAuditLog, useClubsWithMembers, useRemoveMember, useSetActive, useSetRole } from '../../lib/admin';
 
 type Tab = 'overview' | 'users' | 'clubs' | 'audit';
 
@@ -44,19 +46,59 @@ function NotConnected() {
 }
 
 function Overview() {
-  const stats = useAdminStats();
-  if (stats.isError) return <FormStatus kind="error">{friendlyError(stats.error)}</FormStatus>;
-  const s = stats.data;
+  // Every number comes from admin_dashboard(): one aggregate query in the
+  // database, which first checks that the caller is an admin.
+  const q = useAdminDashboard();
+  if (q.isError) return <FormStatus kind="error">{friendlyError(q.error)}</FormStatus>;
+  const d = q.data;
+  const roles = d?.users_by_role ?? {};
+  const statusOrder = ['draft', 'submitted', 'under_review', 'changes_requested', 'approved', 'published', 'completed', 'rejected', 'cancelled'];
+  const fmtDay = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' });
+  const timeline = (d?.registrations_14d ?? []).map(r => {
+    const date = new Date(`${r.day}T00:00:00`);
+    return { label: fmtDay.format(date), short: String(date.getDate()), value: r.n };
+  });
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="Students" value={s?.roles.student} icon={GraduationCap} loading={!s} />
-      <StatCard label="Organizers" value={s?.roles.organizer} icon={UsersRound} loading={!s} hint="Need a club lead role to manage events" />
-      <StatCard label="DSA & admins" value={s ? s.roles.dsa + s.roles.admin : undefined} icon={ShieldCheck} loading={!s} />
-      <StatCard label="Clubs" value={s?.clubs} icon={Building2} loading={!s} />
-      <StatCard label="Venues" value={s?.venues} icon={Building2} loading={!s} />
-      <StatCard label="Events (all states)" value={s?.events} icon={CalendarRange} loading={!s} />
-      <StatCard label="Pending OD requests" value={s?.pendingOd} icon={ClipboardList} loading={!s} />
-      <Card className="p-5 text-sm text-plum-soft">Registration, attendance and trend analytics arrive with the dashboards stage.</Card>
+    <div className="grid gap-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Students" value={roles.student ?? (d ? 0 : undefined)} icon={GraduationCap} loading={!d} />
+        <StatCard label="Organizers" value={roles.organizer ?? (d ? 0 : undefined)} icon={UsersRound} loading={!d} hint="Need a club lead role to manage events" />
+        <StatCard label="Active clubs" value={d?.active_clubs} icon={Building2} loading={!d} hint={d ? `${d.venues} venues` : undefined} />
+        <StatCard label="Upcoming events" value={d?.upcoming_published} icon={CalendarRange} loading={!d} hint="Published, not yet ended" />
+        <StatCard label="Active registrations" value={d?.registrations_active} icon={Ticket} loading={!d} />
+        <StatCard label="Attendance rate" value={d ? (d.attendance_rate === null ? '—' : `${d.attendance_rate}%`) : undefined} icon={Percent} loading={!d}
+                  hint={d ? `${d.attendance_verified} verified check-ins` : undefined} />
+        <StatCard label="OD pending" value={d ? (d.od_by_status.pending ?? 0) : undefined} icon={ClipboardList} loading={!d}
+                  hint={d ? `${d.od_by_status.approved ?? 0} approved · ${d.od_by_status.rejected ?? 0} rejected` : undefined} />
+        <StatCard label="DSA & admins" value={d ? (roles.dsa ?? 0) + (roles.admin ?? 0) : undefined} icon={ShieldCheck} loading={!d} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-5">
+          <h3 className="text-base font-bold">Registrations per day</h3>
+          <p className="mb-3 text-xs text-plum-muted">Last 14 days, campus time</p>
+          {d ? <BarTimeline data={timeline} valueLabel="Registrations" /> : <Skeleton className="h-48" />}
+        </Card>
+        <Card className="p-5">
+          <h3 className="text-base font-bold">Events by category</h3>
+          <p className="mb-3 text-xs text-plum-muted">Published and completed events</p>
+          {!d ? <Skeleton className="h-48" />
+            : !d.events_by_category.length ? <p className="text-sm text-plum-soft">No published events yet.</p>
+            : <HBarChart data={d.events_by_category.map(c => ({ label: c.category, value: c.n }))} valueLabel="Events" />}
+        </Card>
+      </div>
+
+      {d && (
+        <Card className="p-5">
+          <h3 className="text-base font-bold">Events by status</h3>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {statusOrder.filter(s => d.events_by_status[s]).map(s => (
+              <li key={s}><Badge tone="neutral" className="px-3 py-1.5 text-xs">{s.replace('_', ' ')} · {d.events_by_status[s]}</Badge></li>
+            ))}
+            {!Object.keys(d.events_by_status).length && <li className="text-sm text-plum-soft">No events yet.</li>}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

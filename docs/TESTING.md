@@ -151,6 +151,26 @@ Fixes:
 
 **Not tested automatically:** real camera scanning (it needs a physical camera and the browser's permission prompt), and the signed-in flows on the live project (they need migration 10 pushed).
 
+## Stage 8 results (notifications, dashboards, recommendations)
+
+**Database: 121 / 121 passed** (7 new in `tests/db/dashboards.test.js`). **Web: 42 / 42.**
+
+| Requirement | Result |
+|---|---|
+| Student dashboard counts only the caller's data; visitors refused | pass |
+| Organizer dashboard excludes other clubs; seats and attendance rate correct (50 % case) | pass |
+| DSA dashboard: DSA/admin only; queue size, decisions and average decision time (4 h case) | pass |
+| Admin dashboard: admin only; 14-day trend (today counted); events by category | pass |
+| Recommendations scored and sorted (7 / 4 / 2 case) with reasons; partial clash lowers the score | pass |
+| Recommendations never include registered, full or closed events; internal function not callable | pass |
+| "Mark all as read" changes only the caller's notifications | pass |
+
+**Bugs found by testing and fixed:** recommendation reasons were built as an invalid array (`text[] || 'text'`); the test helper hid the real error when a query failed inside `asUser`.
+
+**Charts:** rendered and inspected on a temporary preview page (since deleted). That check found axis text shrinking to about 7px and a misleading "5" tick at 4.5; both fixed (container-width sizing, even axis maximum). The colour was validated with the dataviz script (all checks pass on white). No sideways scrolling at 375px.
+
+**Not yet verified:** the signed-in dashboards on the live project (they need migration 11 pushed).
+
 ## Not yet tested (and why)
 
 - **Migration 7 on the live project, and the history repair.** These need your CLI login and database password.

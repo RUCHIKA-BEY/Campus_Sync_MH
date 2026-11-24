@@ -3,6 +3,7 @@ import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCirc
 import { ReasonDialog } from '../../components/ReasonDialog';
 import { RegistrantsDialog } from './RegistrantsDialog';
 import { AttendanceDialog } from './AttendanceDialog';
+import { OrganizerInsights } from './OrganizerInsights';
 import { SchedulingWarnings } from '../events/SchedulingWarnings';
 import { useDepartments } from '../../lib/queries';
 import { useCancelEvent, useCompleteEvent, usePublishEvent, useReopenEvent, useSubmitEvent } from '../../lib/workflow';
@@ -66,6 +67,7 @@ export function OrganizerPage() {
               <StatCard label="Needs changes" value={count(['changes_requested', 'rejected'])} icon={FileText} loading={events.isPending} />
               <StatCard label="Approved / published" value={count(['approved', 'published'])} icon={CheckCircle2} loading={events.isPending} />
             </div>
+            <OrganizerInsights />
 
             {events.isError ? <FormStatus kind="error">{friendlyError(events.error)}</FormStatus>
               : events.isPending ? <Skeleton className="h-48" />

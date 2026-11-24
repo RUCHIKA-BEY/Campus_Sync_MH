@@ -15,6 +15,8 @@ import { usePublishEvent, useReviewEvent, useStartReview, type Decision } from '
 import { SchedulingWarnings } from '../events/SchedulingWarnings';
 import { OdQueue } from './OdQueue';
 import { useOdQueue } from '../../lib/od';
+import { useDsaDashboard } from '../../lib/dashboards';
+import { Timer } from 'lucide-react';
 
 interface Proposal {
   id: string; title: string; description: string; status: EventStatus; scope: string; event_type: string;
@@ -46,6 +48,7 @@ export function DsaPage() {
   const od = useOdQueue('pending');
   const [tab, setTab] = useState<Tab>('proposals');
   const [reviewing, setReviewing] = useState<Proposal | null>(null);
+  const dash = useDsaDashboard();
 
   if (!isConfigured) {
     return <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6"><PageHeader kicker="DSA clearance desk" title="DSA desk" />
@@ -64,6 +67,14 @@ export function DsaPage() {
         <StatCard label="Approved / published" value={p.filter(e => ['approved', 'published'].includes(e.status)).length} icon={CheckCircle2} loading={proposals.isPending} />
         <StatCard label="Rejected / changes asked" value={p.filter(e => ['rejected', 'changes_requested'].includes(e.status)).length} icon={XCircle} loading={proposals.isPending} />
         <StatCard label="Pending OD requests" value={od.data?.length} icon={ClipboardCheck} loading={od.isPending} />
+      </div>
+      {/* Decision activity, from dsa_dashboard() (last 30 days). */}
+      <div className="-mt-4 mb-8 grid gap-4 sm:grid-cols-3">
+        <StatCard label="Avg. time to decide" value={dash.data ? (dash.data.avg_decision_hours === null ? '—' : `${dash.data.avg_decision_hours} h`) : undefined} icon={Timer} loading={!dash.data} hint="Submission → decision, last 30 days" />
+        <StatCard label="Proposals decided (30 days)" value={dash.data ? dash.data.approved_30d + dash.data.rejected_30d : undefined} icon={CheckCircle2} loading={!dash.data}
+                  hint={dash.data ? `${dash.data.approved_30d} approved · ${dash.data.rejected_30d} rejected` : undefined} />
+        <StatCard label="OD decided (30 days)" value={dash.data ? dash.data.od_approved_30d + dash.data.od_rejected_30d : undefined} icon={ClipboardCheck} loading={!dash.data}
+                  hint={dash.data ? `${dash.data.od_approved_30d} approved · ${dash.data.od_rejected_30d} rejected` : undefined} />
       </div>
 
       <div className="mb-5">

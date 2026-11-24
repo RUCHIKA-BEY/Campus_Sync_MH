@@ -9,7 +9,7 @@ export type Access =
   | { kind: 'role'; roles: AppRole[] };
 
 export const HOME_BY_ROLE: Record<AppRole, string> = {
-  student: '/discover',
+  student: '/',
   organizer: '/organizer',
   dsa: '/dsa',
   admin: '/admin',

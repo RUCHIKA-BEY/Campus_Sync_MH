@@ -7,13 +7,22 @@ import { longDate, timeRange } from '../../lib/events';
 import { useEventFeed } from '../../lib/publicEvents';
 import { StatusBadge, useNow } from '../events/eventUi';
 import { EventCard } from '../discover/EventCard';
+import { useAuth } from '../../auth/AuthProvider';
+import { isConfigured } from '../../lib/env';
+import { StudentHome } from './StudentHome';
 
 const INTERESTS = [
   ['technology', 'Technology'], ['hackathons', 'Hackathons'], ['entrepreneurship', 'Entrepreneurship'],
   ['arts-culture', 'Arts & Culture'], ['music', 'Music'], ['research', 'Research'], ['community', 'Community'],
 ] as const;
 
+/** Signed-in students get their personal dashboard; everyone else the landing page. */
 export function HomePage() {
+  const { profile } = useAuth();
+  return isConfigured && profile?.role === 'student' ? <StudentHome /> : <LandingPage />;
+}
+
+function LandingPage() {
   const now = useNow();
   const feed = useEventFeed();
   const upcoming = useMemo(() => feed.events.filter(e => e.lifecycle === 'published' && Date.parse(e.endsAt) > now.getTime())

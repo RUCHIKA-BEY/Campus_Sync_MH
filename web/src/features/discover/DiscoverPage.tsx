@@ -7,6 +7,7 @@ import { Button, Kicker, Select, cx } from '../../components/ui';
 import { isConfigured } from '../../lib/env';
 import { DEFAULT_FILTERS, filterEvents, matchInterests, type CampusEvent, type EventFilters, type When } from '../../lib/events';
 import { useEventFeed } from '../../lib/publicEvents';
+import { Recommendations } from '../home/Recommendations';
 import { Skeleton } from '../../components/ui';
 import { useSavedEvents } from '../../lib/demo';
 import { useCategories, useMyInterestIds } from '../../lib/queries';
@@ -49,6 +50,8 @@ export function DiscoverPage() {
   const [filters, update, reset] = useFilters();
   const { savedIds } = useSavedEvents();
   const feed = useEventFeed();
+  const { profile } = useAuth();
+  const signedInStudent = isConfigured && profile?.role === 'student';
   const events = feed.events;
   const results = useMemo(() => filterEvents(events, filters, now, savedIds), [events, filters, now, savedIds]);
   const featured = useMemo(
@@ -77,7 +80,8 @@ export function DiscoverPage() {
 
         {feed.isLoading && <Skeleton className="h-[420px] rounded-[28px]" />}
         {!isFiltered && <FeaturedSpotlight events={featured.length ? featured : events.filter(e => e.lifecycle === 'published' && Date.parse(e.endsAt) > now.getTime()).slice(0, 3)} now={now} />}
-        {!isFiltered && <ForYou events={events} />}
+        {/* Real events: scored recommendations (with reasons). Sample events: simple interest match. */}
+        {!isFiltered && (feed.isSample ? <ForYou events={events} /> : signedInStudent && <div className="mt-10"><Recommendations /></div>)}
 
         {/* ---------------- Sticky discovery tools ---------------- */}
         <section aria-label="Find events" className="sticky top-16 z-30 -mx-4 mt-10 border-y border-line/80 bg-ivory/90 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border sm:px-4">

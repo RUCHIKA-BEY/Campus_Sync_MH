@@ -84,7 +84,7 @@ Access control must be enforced by the backend and database policies, not merely
 | Proposal submission, DSA approval, publication, cancellation | ✅ Built (Stage 5), 15 workflow tests |
 | Timetable conflict detection, transaction-safe registration, seat counts, campus-wide clash warnings | ✅ Built (Stage 6), 23 tests |
 | OD requests and review, QR check-in sessions, manual attendance | ✅ Built (Stage 7), 13 tests |
-| Notifications, analytics dashboards | ⏳ Stage 8 |
+| Notification centre, role dashboards, admin charts, rule-based recommendations | ✅ Built (Stage 8), 7 tests |
 
 ---
 

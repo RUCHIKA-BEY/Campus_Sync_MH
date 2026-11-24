@@ -61,7 +61,8 @@ web/
 | Bookmarks; demo registration for sample events | On this device (localStorage), labelled |
 | On-Duty requests (student), OD review queue (DSA), check-in desk with camera scanner and manual marking (organizer) | **Real** (migration 10). The scanner uses `jsqr`, loaded only when scanning starts |
 | Organizer registrants list, campus-wide clash warnings, target departments | **Real** (`get_event_registrants`, `event_scheduling_warnings`, `event_audiences`) |
-| Notifications | Honest empty panel, with no fake count |
+| Notifications (bell, unread count, history, mark read) | **Real** (`notifications` table, RLS) |
+| Student home dashboard, recommendations with reasons; organizer, DSA and admin numbers; admin charts | **Real** (migration 11 aggregate functions) |
 | Timetable | **Real**: add, edit and delete weekly classes (`timetable_slots`). The database rejects overlapping classes. Private to the student |
 | Organizer console | **Real**: managed clubs, create, edit and delete **drafts** (`events`; column GRANTs block status changes). *Submit for approval* is disabled until Stage 5 |
 | DSA desk | **Real queues** (non-draft events, pending OD), empty until Stage 5 creates submissions. Approve/reject disabled until Stage 5/7 |

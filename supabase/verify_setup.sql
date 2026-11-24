@@ -5,7 +5,8 @@
 -- Rows marked [m7] need migration 20261124000100 (explicit grants);
 -- rows marked [m8] need 20261124000200 (event lifecycle, Stage 5);
 -- rows marked [m9] need 20261124000300 (registration & conflicts, Stage 6);
--- rows marked [m10] need 20261124000400 (OD & attendance, Stage 7).
+-- rows marked [m10] need 20261124000400 (OD & attendance, Stage 7);
+-- rows marked [m11] need 20261124000500 (dashboards & recommendations, Stage 8).
 -- The last two rows read the Supabase CLI's migration history table
 -- (supabase_migrations.schema_migrations); before you run
 -- `supabase migration repair` they show "no history table yet".
@@ -92,6 +93,14 @@ checks(check_name, expected, actual, passed) as (
   ('[m10] visitors can call check_in (must be false)', 'false',
      (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'check_in'), null),
+  ('[m11] dashboard & recommendation functions for logged-in users', '5',
+     (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('student_dashboard','organizer_dashboard','dsa_dashboard','admin_dashboard','get_recommendations')
+        and has_function_privilege('authenticated', p.oid, 'EXECUTE')), null),
+  ('[m11] visitors can call admin_dashboard (must be false)', 'false',
+     (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'admin_dashboard'), null),
   ('categories (migration data)', '8',  (select count(*)::text from public.categories), null),
   ('platform settings (migration data)', '6', (select count(*)::text from public.platform_settings), null),
   ('departments (seed, at least 1)', '≥ 1', (select count(*)::text from public.departments),
@@ -102,9 +111,9 @@ checks(check_name, expected, actual, passed) as (
      (select count(*) > 0 from public.clubs)),
   ('academic terms (seed, at least 1)', '≥ 1', (select count(*)::text from public.academic_terms),
      (select count(*) > 0 from public.academic_terms)),
-  ('migration history: versions recorded', '10',
+  ('migration history: versions recorded', '11',
      coalesce((select applied_count from history), 'no history table yet'), null),
-  ('migration history: latest version', '20261124000400',
+  ('migration history: latest version', '20261124000500',
      coalesce((select latest_version from history), 'no history table yet'), null)
 )
 select case when coalesce(passed, expected = actual) then '✅' else '❌' end as ok,
