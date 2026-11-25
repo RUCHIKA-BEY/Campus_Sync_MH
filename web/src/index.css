@@ -10,6 +10,7 @@
   /* Surfaces */
   --color-ivory: #faf6f0;        /* page canvas */
   --color-cream: #f7f3ec;        /* soft surface */
+  --color-brand-canvas: #fbf8ef; /* background baked into the official banner artwork */
   --color-field: #f3ece7;        /* input fill */
   --color-line: #eae3d9;         /* subtle borders */
   --color-mauve: #eadfd8;        /* chips, tags */
@@ -80,3 +81,9 @@
 /* Room for the fixed mobile tab bar + iPhone home indicator. */
 .pb-tabbar { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 @media (min-width: 768px) { .pb-tabbar { padding-bottom: 0; } }
+
+/* Brand loader: the whole logo fades; its geometry is never animated. */
+@keyframes brand-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

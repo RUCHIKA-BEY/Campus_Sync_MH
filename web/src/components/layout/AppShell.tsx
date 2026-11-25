@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { LoaderCircle, Bell, ChevronDown, LogIn, LogOut, UserRound, BellOff, FlaskConical, CircleUserRound } from 'lucide-react';
+import { Bell, ChevronDown, LogIn, LogOut, UserRound, BellOff, FlaskConical, CircleUserRound } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 import { isConfigured } from '../../lib/env';
 import { ROLE_LABELS } from '../../lib/types';
@@ -10,6 +10,7 @@ import { initials } from '../../lib/validation';
 import { friendlyError } from '../../lib/errors';
 import { useToast } from '../Toaster';
 import { buttonClass, cx } from '../ui';
+import { BrandLoader, BrandMark } from '../brand/Brand';
 import { MAIN_NAV, MOBILE_TABS, ROLE_NAV, type NavItem } from './nav';
 import { notificationLink, timeAgo, useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../../lib/notifications';
 
@@ -21,11 +22,7 @@ function isActive(pathname: string, to: string) {
 export function Logo({ className }: { className?: string }) {
   return (
     <Link to="/" className={cx('group flex items-center gap-2.5 rounded-xl', className)} aria-label="CampusSync home">
-      <span className="relative grid size-9 place-items-center overflow-hidden rounded-[12px] bg-gradient-to-br from-terracotta to-terracotta-deep text-white shadow-[0_8px_18px_rgb(217_107_67/0.35)]">
-        <svg viewBox="0 0 24 24" className="size-5 transition-transform duration-300 group-hover:-rotate-12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M7 17 17 7M9 7h8v8" />
-        </svg>
-      </span>
+      <BrandMark size={38} className="-my-1" />
       <span className="font-display text-[19px] font-extrabold tracking-tight text-plum">
         Campus<span className="text-terracotta">Sync</span>
       </span>
@@ -230,7 +227,7 @@ export function AppShell() {
           <motion.div key={location.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.18, ease: 'easeOut' }}>
             {/* Pages load on demand (code splitting); show a spinner meanwhile. */}
-            <Suspense fallback={<div className="grid min-h-[50vh] place-items-center text-plum-soft"><LoaderCircle className="size-6 animate-spin" aria-label="Loading page" /></div>}>
+            <Suspense fallback={<BrandLoader className="min-h-[50vh]" />}>
               <Outlet />
             </Suspense>
           </motion.div>

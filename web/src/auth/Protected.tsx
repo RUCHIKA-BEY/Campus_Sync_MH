@@ -1,11 +1,11 @@
 // Route guard: decides what to SHOW. Real protection is in the database.
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
-import { LoaderCircle } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { decideAccess, type Access } from '../lib/access';
 import { isConfigured } from '../lib/env';
 import { useToast } from '../components/Toaster';
+import { BrandLoader } from '../components/brand/Brand';
 
 export function Protected({ access, children }: { access: Access; children: ReactNode }) {
   const { ready, session, profile } = useAuth();
@@ -22,7 +22,7 @@ export function Protected({ access, children }: { access: Access; children: Reac
   }, [decision, toast]);
 
   if (!decision) {
-    return <div className="grid min-h-[50vh] place-items-center text-plum-soft"><LoaderCircle className="size-6 animate-spin" aria-label="Loading" /></div>;
+    return <BrandLoader label="Loading" className="min-h-[50vh]" />;
   }
   if (!decision.allow) return <Navigate to={decision.redirect} replace state={{ from: location.pathname }} />;
   return <>{children}</>;

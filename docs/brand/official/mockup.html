@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CampusSync branding mockups</title>
+<link rel="icon" href="favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ivory:#FAF6F0;--plum:#4A2E35;--terra:#D96B43;--mauve:#EADFD8;--line:#EAE3D9;--cream:#FBF8EF;--muted:#7a6a6d}
+*{box-sizing:border-box}body{margin:0;background:#e9e4de;font-family:"DM Sans",system-ui,sans-serif;color:var(--plum);padding:24px}
+h1.t{font:700 15px "DM Sans";margin:0 0 10px;color:#555}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{background:var(--ivory);border:1px solid #d8cfc6;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(74,46,53,.08)}
+.desk{width:1180px}.mob{width:375px}
+header{display:flex;align-items:center;gap:28px;padding:14px 28px;border-bottom:1px solid var(--line);background:rgba(250,246,240,.9)}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px "Plus Jakarta Sans";letter-spacing:-.02em;color:var(--plum);text-decoration:none}
+.brand img{display:block}
+nav{display:flex;gap:22px;font-weight:600;font-size:14px;color:var(--muted)}nav b{color:var(--plum)}
+.btn{margin-left:auto;background:var(--terra);color:#fff;border-radius:12px;padding:10px 18px;font-weight:700;font-size:14px}
+.hero{padding:36px 28px 28px}
+.bannercard{background:var(--cream);border:1px solid var(--line);border-radius:28px;padding:28px 36px;display:flex;justify-content:center}
+.bannercard img{width:100%;max-width:980px;height:auto;aspect-ratio:1542/473;display:block}
+.below{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:26px}
+.below h2{font:800 30px/1.15 "Plus Jakarta Sans";margin:0;letter-spacing:-.02em}
+.below p{margin:6px 0 0;color:var(--muted)}
+.search{display:flex;gap:10px}.search span{background:#F3ECE7;border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:260px;color:#9b8b8e;font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}.card{height:120px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+.auth{display:flex;justify-content:center;padding:36px}
+.authcard{width:380px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:28px}
+.authcard .brand{justify-content:center;margin-bottom:6px}
+.authcard h3{text-align:center;font:800 22px "Plus Jakarta Sans";margin:8px 0 18px}
+.field{height:44px;border-radius:12px;background:#F3ECE7;border:1px solid var(--line);margin-bottom:12px}
+.full{display:block;text-align:center;margin:6px 0 0}
+.loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px;color:var(--muted);font-size:14px}
+.loading img{animation:breathe 1.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.96)}}
+.mob header{padding:12px 16px;gap:10px}.mob .brand{font-size:18px}.mob nav{display:none}.mob .btn{padding:8px 14px;font-size:13px}
+.mob .hero{padding:16px}.mob .bannercard{border-radius:20px;padding:14px 12px}
+.mob .below{flex-direction:column;align-items:stretch}.mob .below h2{font-size:24px}.mob .search span{min-width:0;flex:1}
+.mob .cards{grid-template-columns:1fr}
+.tabbar{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding:10px 0 14px;font-size:11px;font-weight:700;color:var(--muted);background:#fff}
+</style></head><body>
+<h1 class="t">Desktop (1180px): header logo + homepage banner</h1>
+<div class="row"><div class="frame desk">
+  <header><a class="brand" href="#"><img src="campussync-c-logo@4x.png" width="36" height="36" alt="">CampusSync</a>
+    <nav><b>Home</b><span>Discover</span><span>Clubs</span><span>Timetable</span></nav><span class="btn">Sign in</span></header>
+  <section class="hero">
+    <div class="bannercard"><img src="campussync-banner.webp" width="1542" height="473" alt="CampusSync"></div>
+    <div class="below"><div><h2>Make space for what matters.</h2><p>Discover campus events that fit your timetable.</p></div>
+      <div class="search"><span>Search events, clubs…</span><span class="btn" style="margin:0">Discover events</span></div></div>
+    <div class="cards"><div class="card"></div><div class="card"></div><div class="card"></div></div>
+  </section>
+</div></div>
+
+<h1 class="t" style="margin-top:28px">Mobile (375px) · Sign-in · Loading state</h1>
+<div class="row">
+  <div class="frame mob">
+    <header><a class="brand" href="#"><img src="campussync-c-logo@4x.png" width="32" height="32" alt="">CampusSync</a><span class="btn">Sign in</span></header>
+    <section class="hero">
+      <div class="bannercard"><img src="campussync-banner.webp" width="1542" height="473" alt="CampusSync"></div>
+      <div class="below"><div><h2>Make space for what matters.</h2><p>Discover campus events that fit your timetable.</p></div>
+        <div class="search"><span>Search events…</span></div></div>
+      <div class="cards"><div class="card"></div></div>
+    </section>
+    <div class="tabbar"><span>Home</span><span>Discover</span><span>My events</span><span>Profile</span></div>
+  </div>
+  <div class="frame" style="width:460px">
+    <div class="auth"><div class="authcard">
+      <a class="brand" href="#"><img src="campussync-c-logo@4x.png" width="64" height="64" alt="CampusSync"></a>
+      <h3>Welcome back</h3><div class="field"></div><div class="field"></div><span class="btn full">Sign in</span>
+    </div></div>
+  </div>
+  <div class="frame" style="width:260px">
+    <div class="loading"><img src="campussync-c-logo@4x.png" width="56" height="56" alt=""><span>Loading CampusSync…</span></div>
+    <p style="font-size:12px;color:#7a6a6d;padding:0 18px 18px;margin:0">Whole logo gently fades (no rotation, geometry untouched). Respects reduced-motion in Phase 2.</p>
+  </div>
+</div>
+</body></html>

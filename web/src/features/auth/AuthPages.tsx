@@ -10,6 +10,7 @@ import { friendlyError } from '../../lib/errors';
 import { useDepartments } from '../../lib/queries';
 import { EMAIL_RE, REGNO_RE, validatePassword } from '../../lib/validation';
 import { HOME_BY_ROLE } from '../../lib/access';
+import { BrandBanner, BrandMark } from '../../components/brand/Brand';
 
 // Runs a form task with a busy flag (blocks double submits) and a message.
 function useFormTask() {
@@ -48,6 +49,9 @@ function AuthLayout({ kicker, title, lead, children, wide }: { kicker: string; t
     <div className="ambient">
       <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_minmax(0,auto)] lg:py-16">
         <motion.aside initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} className="hidden max-w-md pt-6 lg:block">
+          <div className="mb-8 rounded-[24px] border border-line bg-brand-canvas px-5 py-4 shadow-soft">
+            <BrandBanner priority />
+          </div>
           <h2 className="text-4xl leading-tight font-extrabold">Every campus moment, <span className="text-terracotta">in sync</span> with your week.</h2>
           <ul className="mt-8 grid gap-4 text-plum-soft">
             {[
@@ -66,6 +70,7 @@ function AuthLayout({ kicker, title, lead, children, wide }: { kicker: string; t
           </ul>
         </motion.aside>
         <Card className={wide ? 'w-full p-6 sm:p-8 lg:w-[600px]' : 'w-full p-6 sm:p-8 lg:w-[460px]'}>
+          <BrandMark size={48} className="mb-4 -ml-1 lg:hidden" />
           <Kicker>{kicker}</Kicker>
           <h1 className="mt-2 text-[2rem] leading-tight font-extrabold">{title}</h1>
           <div className="mt-2 text-sm text-plum-soft">{lead}</div>

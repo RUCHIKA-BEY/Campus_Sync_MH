@@ -10,6 +10,7 @@ import { EventCard } from '../discover/EventCard';
 import { useAuth } from '../../auth/AuthProvider';
 import { isConfigured } from '../../lib/env';
 import { StudentHome } from './StudentHome';
+import { BrandBanner } from '../../components/brand/Brand';
 
 const INTERESTS = [
   ['technology', 'Technology'], ['hackathons', 'Hackathons'], ['entrepreneurship', 'Entrepreneurship'],
@@ -32,7 +33,14 @@ function LandingPage() {
   return (
     <>
       <section className="ambient overflow-hidden">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:pt-16 lg:pb-24">
+        {/* Official CampusSync banner: shown at its own proportions on a matching canvas. */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}
+                    className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:pt-10">
+          <div className="mx-auto max-w-4xl rounded-[24px] border border-line bg-brand-canvas px-3 py-3 shadow-soft sm:rounded-[32px] sm:px-8 sm:py-5">
+            <BrandBanner priority className="mx-auto max-w-[760px]" />
+          </div>
+        </motion.div>
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:pt-12 lg:pb-24">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-bold text-terracotta-deep shadow-soft">
               <Sparkles className="size-3.5" aria-hidden /> Academic timetable & event coordination
