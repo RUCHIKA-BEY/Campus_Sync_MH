@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { CalendarPlus, Lock, MapPin, Pencil, Trash2, UserRound, CalendarDays, FlaskConical } from 'lucide-react';
 import { Button, Card, EmptyState, Field, FormStatus, Input, PageHeader, Select, Skeleton, cx } from '../../components/ui';
@@ -10,7 +10,10 @@ import { DAYS, DAY_SHORT, campusWeekday, clockLabel, toMinutes, toTimeInput } fr
 import { BOOKABLE, buildRows, periodSpan, yFor } from '../../lib/periods';
 import { pickCurrentTerm, useDeleteSlot, useMySlots, useSaveSlot, useTerms, type Slot, type SlotInput } from '../../lib/timetable';
 
-const PX_PER_MIN = 1.15; // a 55-minute period is about 63px tall
+const PX_PER_MIN = 2; // a 55-minute period is about 110px wide (the grid stretches to fit)
+const BREAK_PX = 28;
+const DAY_COL_PX = 72;
+const DAY_ROW_PX = 84;
 const TINTS = [
   'bg-peach border-terracotta/40 text-terracotta-deep',
   'bg-mauve border-plum-muted/40 text-plum',
@@ -85,56 +88,58 @@ export function TimetablePage() {
 }
 
 function WeekGrid({ slots, days, onEdit }: { slots: Slot[]; days: number[]; onEdit: (s: Slot) => void }) {
-  // Rows follow the university bell schedule (periods and breaks), not clock hours.
-  const rows = buildRows(slots, PX_PER_MIN);
-  const total = rows.reduce((h, r) => h + r.height, 0);
+  // Laid out like the university timetable: one row per day, one column per
+  // period (1–8) with its timings, and the two short breaks between them.
+  const cols = buildRows(slots, PX_PER_MIN, BREAK_PX);
+  const total = cols.reduce((w, c) => w + c.height, 0);
+  const pct = (px: number) => `${(px / total) * 100}%`;
   const today = campusWeekday();
-  const shaded = (k: string) => k === 'break' || k === 'lunch';
 
   return (
     <Card className="hidden overflow-x-auto md:block">
-      <div className="grid min-w-[760px]" style={{ gridTemplateColumns: `76px repeat(${days.length}, minmax(0, 1fr))` }}>
+      <div className="grid" style={{ gridTemplateColumns: `${DAY_COL_PX}px minmax(${total}px, 1fr)` }}>
+        {/* Header: period numbers and timings */}
         <div className="border-b border-line" />
-        {days.map(d => (
-          <div key={d} className={cx('border-b border-l border-line px-3 py-3 text-sm font-bold', d === today ? 'bg-peach text-terracotta-deep' : 'text-plum')}>
-            {DAY_SHORT[d - 1]}{d === today && <span className="ml-1.5 text-[11px] font-semibold">Today</span>}
-          </div>
-        ))}
-        <div className="relative" style={{ height: total }}>
-          {rows.map(r => (
-            <div key={r.start} style={{ top: r.top, height: r.height }}
-                 className={cx('absolute inset-x-0 flex flex-col justify-center border-t border-line/70 pr-2 text-right leading-tight', shaded(r.kind) && 'bg-cream/70')}>
-              {r.kind === 'class'
-                ? <><span className="text-sm font-bold text-plum">{r.label}</span><span className="text-[10px] text-plum-muted">{r.sub}</span></>
-                : r.height >= 34
-                  ? <><span className="text-[11px] font-semibold text-plum-soft">{r.label}</span><span className="text-[10px] text-plum-muted">{r.sub}</span></>
-                  : <span className="text-[10px] font-semibold text-plum-muted" title={r.sub}>{r.label}</span>}
+        <div className="relative h-14 border-b border-line">
+          {cols.map(c => (
+            <div key={c.start} style={{ left: pct(c.top), width: pct(c.height) }}
+                 className={cx('absolute inset-y-0 flex flex-col items-center justify-center border-l border-line/70 text-center leading-tight',
+                   c.kind === 'break' && 'bg-cream/70')}>
+              {c.kind === 'break'
+                ? <span className="text-[10px] font-semibold text-plum-muted [writing-mode:vertical-rl] rotate-180" title={c.sub}>Break</span>
+                : <><span className="text-base font-bold text-plum">{c.label}</span><span className="text-[10px] text-plum-muted">{c.sub}</span></>}
             </div>
           ))}
         </div>
+
         {days.map(d => (
-          <div key={d} className={cx('relative border-l border-line', d === today && 'bg-peach/30')} style={{ height: total }}>
-            {rows.map(r => (
-              <div key={r.start} className={cx('absolute inset-x-0 border-t border-line/70', shaded(r.kind) && 'bg-cream/70')} style={{ top: r.top, height: r.height }}>
-                {r.kind === 'lunch' && <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold tracking-wide text-plum-muted/70 uppercase">Lunch</span>}
-              </div>
-            ))}
-            {slots.filter(s => s.day_of_week === d).map(s => {
-              const top = yFor(rows, toMinutes(s.start_time));
-              const height = yFor(rows, toMinutes(s.end_time)) - top;
-              const span = periodSpan(s.start_time, s.end_time);
-              return (
-                <motion.button key={s.id} type="button" onClick={() => onEdit(s)} layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-                  className={cx('absolute inset-x-1.5 z-[1] overflow-hidden rounded-xl border px-2.5 py-1.5 text-left shadow-soft transition hover:shadow-lift focus-visible:z-10', tintFor(s.subject_name))}
-                  style={{ top: top + 2, height: Math.max(height - 4, 28) }}
-                  aria-label={`${s.subject_name}, ${DAYS[d - 1]} ${clockLabel(s.start_time)} to ${clockLabel(s.end_time)}. Edit`}>
-                  <p className="truncate text-[13px] font-bold">{s.subject_name}</p>
-                  {height > 44 && <p className="truncate text-[11px] opacity-80">{span ? `${span} · ` : ''}{clockLabel(s.start_time)} – {clockLabel(s.end_time)}</p>}
-                  {height > 64 && (s.course_code || s.room) && <p className="truncate text-[11px] opacity-80">{[s.course_code, s.room].filter(Boolean).join(' · ')}</p>}
-                </motion.button>
-              );
-            })}
-          </div>
+          <Fragment key={d}>
+            <div className={cx('flex items-center border-b border-line px-3 text-sm font-bold', d === today ? 'bg-peach text-terracotta-deep' : 'text-plum')}>
+              {DAY_SHORT[d - 1]}{d === today && <span className="ml-1.5 text-[11px] font-semibold">Today</span>}
+            </div>
+            <div className={cx('relative border-b border-line', d === today && 'bg-peach/30')} style={{ height: DAY_ROW_PX }}>
+              {cols.map(c => (
+                <div key={c.start} className={cx('absolute inset-y-0 border-l border-line/70', c.kind === 'break' && 'bg-cream/70')}
+                     style={{ left: pct(c.top), width: pct(c.height) }} />
+              ))}
+              {slots.filter(s => s.day_of_week === d).map(s => {
+                const x = yFor(cols, toMinutes(s.start_time));
+                const w = yFor(cols, toMinutes(s.end_time)) - x;
+                const span = periodSpan(s.start_time, s.end_time);
+                return (
+                  <motion.button key={s.id} type="button" onClick={() => onEdit(s)} layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+                    className={cx('absolute inset-y-1.5 z-[1] overflow-hidden rounded-xl border px-2 py-1.5 text-left shadow-soft transition hover:shadow-lift focus-visible:z-10', tintFor(s.subject_name))}
+                    style={{ left: `calc(${pct(x)} + 3px)`, width: `calc(${pct(w)} - 6px)` }}
+                    title={`${s.subject_name} · ${span ? `${span} · ` : ''}${clockLabel(s.start_time)} – ${clockLabel(s.end_time)}`}
+                    aria-label={`${s.subject_name}, ${DAYS[d - 1]} ${clockLabel(s.start_time)} to ${clockLabel(s.end_time)}. Edit`}>
+                    <p className="truncate text-[13px] leading-tight font-bold">{s.subject_name}</p>
+                    {s.course_code && s.course_code !== s.subject_name && <p className="truncate text-[11px] opacity-80">{s.course_code}</p>}
+                    {s.room && <p className="truncate text-[11px] opacity-80">{s.room}</p>}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </Fragment>
         ))}
       </div>
     </Card>

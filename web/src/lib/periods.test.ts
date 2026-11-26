@@ -9,6 +9,12 @@ describe('bell schedule', () => {
     for (let i = 1; i < PERIODS.length; i++) expect(PERIODS[i]!.start).toBe(PERIODS[i - 1]!.end);
   });
 
+  it('has eight ordinary periods; period 5 is not assumed to be lunch', () => {
+    expect(PERIODS.filter(p => p.kind === 'class').map(p => p.no)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+    expect(PERIODS.find(p => p.no === '5')).toMatchObject({ start: '12:35', end: '13:25', kind: 'class' });
+    expect(periodSpan('12:35', '13:25')).toBe('Period 5');
+  });
+
   it('names period spans', () => {
     expect(periodSpan('08:50:00', '09:45:00')).toBe('Period 1');
     expect(periodSpan('10:50', '12:35')).toBe('Periods 3–4');
