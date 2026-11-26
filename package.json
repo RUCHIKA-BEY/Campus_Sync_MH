@@ -11,6 +11,7 @@
     "test:web": "vitest run --config web/vite.config.ts",
     "test:db": "node --test \"tests/db/*.test.js\"",
     "demo:users": "node --env-file=.env scripts/create-demo-users.mjs",
+    "demo:timetable": "node --env-file=.env scripts/seed-demo-timetable.mjs",
     "db:bundle": "node scripts/bundle-sql.mjs",
     "check:supabase": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/check-supabase.mjs",
     "db:list": "supabase migration list --linked",

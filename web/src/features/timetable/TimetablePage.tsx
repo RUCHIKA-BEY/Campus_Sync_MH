@@ -7,9 +7,10 @@ import { useToast } from '../../components/Toaster';
 import { isConfigured } from '../../lib/env';
 import { friendlyError } from '../../lib/errors';
 import { DAYS, DAY_SHORT, campusWeekday, clockLabel, toMinutes, toTimeInput } from '../../lib/time';
+import { BOOKABLE, buildRows, periodSpan, yFor } from '../../lib/periods';
 import { pickCurrentTerm, useDeleteSlot, useMySlots, useSaveSlot, useTerms, type Slot, type SlotInput } from '../../lib/timetable';
 
-const HOUR_PX = 64;
+const PX_PER_MIN = 1.15; // a 55-minute period is about 63px tall
 const TINTS = [
   'bg-peach border-terracotta/40 text-terracotta-deep',
   'bg-mauve border-plum-muted/40 text-plum',
@@ -84,36 +85,51 @@ export function TimetablePage() {
 }
 
 function WeekGrid({ slots, days, onEdit }: { slots: Slot[]; days: number[]; onEdit: (s: Slot) => void }) {
-  const startHour = Math.min(8, ...slots.map(s => Math.floor(toMinutes(s.start_time) / 60)));
-  const endHour = Math.max(18, ...slots.map(s => Math.ceil(toMinutes(s.end_time) / 60)));
-  const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  // Rows follow the university bell schedule (periods and breaks), not clock hours.
+  const rows = buildRows(slots, PX_PER_MIN);
+  const total = rows.reduce((h, r) => h + r.height, 0);
   const today = campusWeekday();
+  const shaded = (k: string) => k === 'break' || k === 'lunch';
 
   return (
     <Card className="hidden overflow-x-auto md:block">
-      <div className="grid min-w-[760px]" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
+      <div className="grid min-w-[760px]" style={{ gridTemplateColumns: `76px repeat(${days.length}, minmax(0, 1fr))` }}>
         <div className="border-b border-line" />
         {days.map(d => (
           <div key={d} className={cx('border-b border-l border-line px-3 py-3 text-sm font-bold', d === today ? 'bg-peach text-terracotta-deep' : 'text-plum')}>
             {DAY_SHORT[d - 1]}{d === today && <span className="ml-1.5 text-[11px] font-semibold">Today</span>}
           </div>
         ))}
-        <div className="relative">
-          {hours.map(h => <div key={h} style={{ height: HOUR_PX }} className="pr-2 pt-1 text-right text-[11px] text-plum-muted">{clockLabel(`${h}:00`).replace(':00', '')}</div>)}
+        <div className="relative" style={{ height: total }}>
+          {rows.map(r => (
+            <div key={r.start} style={{ top: r.top, height: r.height }}
+                 className={cx('absolute inset-x-0 flex flex-col justify-center border-t border-line/70 pr-2 text-right leading-tight', shaded(r.kind) && 'bg-cream/70')}>
+              {r.kind === 'class'
+                ? <><span className="text-sm font-bold text-plum">{r.label}</span><span className="text-[10px] text-plum-muted">{r.sub}</span></>
+                : r.height >= 34
+                  ? <><span className="text-[11px] font-semibold text-plum-soft">{r.label}</span><span className="text-[10px] text-plum-muted">{r.sub}</span></>
+                  : <span className="text-[10px] font-semibold text-plum-muted" title={r.sub}>{r.label}</span>}
+            </div>
+          ))}
         </div>
         {days.map(d => (
-          <div key={d} className={cx('relative border-l border-line', d === today && 'bg-peach/30')} style={{ height: hours.length * HOUR_PX }}>
-            {hours.map((h, i) => <div key={h} className="absolute inset-x-0 border-t border-line/70" style={{ top: i * HOUR_PX }} />)}
+          <div key={d} className={cx('relative border-l border-line', d === today && 'bg-peach/30')} style={{ height: total }}>
+            {rows.map(r => (
+              <div key={r.start} className={cx('absolute inset-x-0 border-t border-line/70', shaded(r.kind) && 'bg-cream/70')} style={{ top: r.top, height: r.height }}>
+                {r.kind === 'lunch' && <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold tracking-wide text-plum-muted/70 uppercase">Lunch</span>}
+              </div>
+            ))}
             {slots.filter(s => s.day_of_week === d).map(s => {
-              const top = ((toMinutes(s.start_time) - startHour * 60) / 60) * HOUR_PX;
-              const height = ((toMinutes(s.end_time) - toMinutes(s.start_time)) / 60) * HOUR_PX;
+              const top = yFor(rows, toMinutes(s.start_time));
+              const height = yFor(rows, toMinutes(s.end_time)) - top;
+              const span = periodSpan(s.start_time, s.end_time);
               return (
                 <motion.button key={s.id} type="button" onClick={() => onEdit(s)} layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-                  className={cx('absolute inset-x-1.5 overflow-hidden rounded-xl border px-2.5 py-1.5 text-left shadow-soft transition hover:shadow-lift focus-visible:z-10', tintFor(s.subject_name))}
+                  className={cx('absolute inset-x-1.5 z-[1] overflow-hidden rounded-xl border px-2.5 py-1.5 text-left shadow-soft transition hover:shadow-lift focus-visible:z-10', tintFor(s.subject_name))}
                   style={{ top: top + 2, height: Math.max(height - 4, 28) }}
                   aria-label={`${s.subject_name}, ${DAYS[d - 1]} ${clockLabel(s.start_time)} to ${clockLabel(s.end_time)}. Edit`}>
                   <p className="truncate text-[13px] font-bold">{s.subject_name}</p>
-                  {height > 44 && <p className="truncate text-[11px] opacity-80">{clockLabel(s.start_time)} – {clockLabel(s.end_time)}</p>}
+                  {height > 44 && <p className="truncate text-[11px] opacity-80">{span ? `${span} · ` : ''}{clockLabel(s.start_time)} – {clockLabel(s.end_time)}</p>}
                   {height > 64 && (s.course_code || s.room) && <p className="truncate text-[11px] opacity-80">{[s.course_code, s.room].filter(Boolean).join(' · ')}</p>}
                 </motion.button>
               );
@@ -146,7 +162,7 @@ function DayList({ slots, days, day, setDay, onEdit }: { slots: Slot[]; days: nu
           {items.map(s => (
             <li key={s.id}>
               <button type="button" onClick={() => onEdit(s)} className={cx('w-full rounded-2xl border p-4 text-left shadow-soft', tintFor(s.subject_name))}>
-                <p className="text-xs font-bold">{clockLabel(s.start_time)} – {clockLabel(s.end_time)}</p>
+                <p className="text-xs font-bold">{periodSpan(s.start_time, s.end_time) ? `${periodSpan(s.start_time, s.end_time)} · ` : ''}{clockLabel(s.start_time)} – {clockLabel(s.end_time)}</p>
                 <p className="mt-1 text-base font-bold text-plum">{s.subject_name}</p>
                 <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-plum-soft">
                   {s.course_code && <span>{s.course_code}</span>}
@@ -171,7 +187,7 @@ function SlotDialog({ slot, termId, onClose }: { slot: Slot | null; termId: stri
   const [f, setF] = useState({
     subject_name: slot?.subject_name ?? '', course_code: slot?.course_code ?? '', room: slot?.room ?? '', faculty: slot?.faculty ?? '',
     day_of_week: String(slot?.day_of_week ?? Math.min(campusWeekday(), 5)),
-    start_time: slot ? toTimeInput(slot.start_time) : '09:00', end_time: slot ? toTimeInput(slot.end_time) : '10:00',
+    start_time: slot ? toTimeInput(slot.start_time) : '08:50', end_time: slot ? toTimeInput(slot.end_time) : '09:45',
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }));
 
@@ -201,6 +217,22 @@ function SlotDialog({ slot, termId, onClose }: { slot: Slot | null; termId: stri
           <Field label="Course code (optional)"><Input value={f.course_code} onChange={set('course_code')} maxLength={15} placeholder="CS301" /></Field>
           <Field label="Day">
             <Select value={f.day_of_week} onChange={set('day_of_week')}>{DAYS.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}</Select>
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="From period">
+            <Select value={BOOKABLE.find(p => p.start === f.start_time)?.start ?? ''}
+                    onChange={e => { const p = BOOKABLE.find(x => x.start === e.target.value); if (p) setF(v => ({ ...v, start_time: p.start, end_time: toMinutes(v.end_time) > toMinutes(p.start) ? v.end_time : p.end })); }}>
+              <option value="" disabled>Custom time</option>
+              {BOOKABLE.map(p => <option key={p.start} value={p.start}>{p.label} · {clockLabel(p.start)}</option>)}
+            </Select>
+          </Field>
+          <Field label="To period">
+            <Select value={BOOKABLE.find(p => p.end === f.end_time)?.end ?? ''}
+                    onChange={e => setF(v => ({ ...v, end_time: e.target.value }))}>
+              <option value="" disabled>Custom time</option>
+              {BOOKABLE.filter(p => toMinutes(p.end) > toMinutes(f.start_time)).map(p => <option key={p.end} value={p.end}>{p.label} · ends {clockLabel(p.end)}</option>)}
+            </Select>
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
