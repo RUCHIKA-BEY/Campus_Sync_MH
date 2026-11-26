@@ -3,11 +3,17 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppShell } from './components/layout/AppShell';
 import { Protected } from './auth/Protected';
 import { AuthUrlEffects } from './auth/AuthUrlEffects';
+import { AppError } from './components/AppError';
+import { isChunkLoadError, reloadForNewVersion } from './lib/staleBuild';
 
 // Code splitting: each page is downloaded only when first visited, so the
 // first load stays small (the Admin console never reaches a student's phone).
 function page<K extends string>(loader: () => Promise<Record<K, ComponentType<any>>>, name: K) {
-  return lazy(() => loader().then(m => ({ default: m[name] })));
+  return lazy(() => loader().then(m => ({ default: m[name] }), error => {
+    // Old tab after a new deploy: reload to get the new files instead of crashing.
+    if (isChunkLoadError(error) && reloadForNewVersion()) return new Promise<never>(() => {});
+    throw error;
+  }));
 }
 const HomePage = page(() => import('./features/home/HomePage'), 'HomePage');
 const DiscoverPage = page(() => import('./features/discover/DiscoverPage'), 'DiscoverPage');
@@ -29,6 +35,7 @@ const NotFoundPage = page(() => import('./features/misc/StatusPages'), 'NotFound
 const router = createBrowserRouter([
   {
     element: <><AuthUrlEffects /><AppShell /></>,
+    errorElement: <AppError />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/discover', element: <DiscoverPage /> },

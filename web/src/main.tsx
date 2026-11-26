@@ -5,7 +5,11 @@ import { MotionConfig } from 'motion/react';
 import { App } from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { ToastProvider } from './components/Toaster';
+import { reloadForNewVersion } from './lib/staleBuild';
 import './index.css';
+
+// Vite reports page files that fail to load (usually: this tab predates a new deploy).
+window.addEventListener('vite:preloadError', event => { if (reloadForNewVersion()) event.preventDefault(); });
 
 const queryClient = new QueryClient({
   defaultOptions: {
