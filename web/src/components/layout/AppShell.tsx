@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Bell, ChevronDown, LogIn, LogOut, UserRound, BellOff, FlaskConical, CircleUserRound } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
@@ -223,15 +223,15 @@ export function AppShell() {
       </header>
 
       <main id="main" className="pb-tabbar flex-1">
-        <AnimatePresence mode="wait">
-          <motion.div key={location.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}>
-            {/* Pages load on demand (code splitting); show a spinner meanwhile. */}
-            <Suspense fallback={<BrandLoader className="min-h-[50vh]" />}>
-              <Outlet />
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+        {/* CSS fade-in, not a JS animation: the page is visible as soon as it renders,
+            and never waits for the previous page to fade out or stays hidden if
+            animation frames are delayed. */}
+        <div key={location.pathname} className="motion-safe:animate-[page-in_0.18s_ease-out]">
+          {/* Pages load on demand (code splitting); show a spinner meanwhile. */}
+          <Suspense fallback={<BrandLoader className="min-h-[50vh]" />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
 
       <footer className="hidden border-t border-line bg-cream/60 lg:block">

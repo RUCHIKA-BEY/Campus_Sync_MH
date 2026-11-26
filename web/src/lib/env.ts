@@ -39,5 +39,6 @@ export const DEMO_ACCOUNTS = [
   { role: 'student', label: 'Student', email: 'student.demo@campussync.test' },
   { role: 'organizer', label: 'Organizer', email: 'organizer.demo@campussync.test' },
   { role: 'dsa', label: 'DSA', email: 'dsa.demo@campussync.test' },
+  { role: 'dsa', label: 'DSA head', email: 'dsa.head@campussync.test' },
   { role: 'admin', label: 'Admin', email: 'admin.demo@campussync.test' },
 ] as const;

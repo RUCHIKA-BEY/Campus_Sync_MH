@@ -1,6 +1,6 @@
 # CampusSync — Database
 
-PostgreSQL on Supabase: **21 tables, 75 RLS policies, 11 triggers, 37 callable functions**, built by 11 migrations in `supabase/migrations/`. The original design and decisions (D1–D9) are in [SCHEMA_PROPOSAL.md](SCHEMA_PROPOSAL.md), which includes the ER diagram. This page is the as-built reference.
+PostgreSQL on Supabase: **21 tables, 75 RLS policies (+3 Storage policies), 11 triggers, 40 callable functions**, built by 12 migrations in `supabase/migrations/`. The original design and decisions (D1–D9) are in [SCHEMA_PROPOSAL.md](SCHEMA_PROPOSAL.md), which includes the ER diagram. This page is the as-built reference.
 
 ## 1. Migrations
 
@@ -17,6 +17,7 @@ PostgreSQL on Supabase: **21 tables, 75 RLS policies, 11 triggers, 37 callable f
 | 9 | `20261124000300_registration_and_conflicts` | Timetable conflicts, registration, seats, warnings, registrants |
 | 10 | `20261124000400_od_and_attendance` | OD workflow, attendance sessions, check-in, manual marks |
 | 11 | `20261124000500_dashboards_and_recommendations` | Role dashboards, recommendations |
+| 12 | `20261125000100_dsa_events_venue_requests_media` | Office of the DSA host club + DSA-head approval; venue requests (added to the venue list on approval); poster/banner columns and the public `event-media` Storage bucket (JPG/PNG/WebP, 2 MB) |
 
 Seed data (fictional, development only) is in `supabase/seed.sql`; it isn't a migration.
 

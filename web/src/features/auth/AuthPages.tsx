@@ -128,7 +128,7 @@ export function LoginPage() {
           <p className="text-xs font-bold tracking-wide text-plum-soft uppercase">Evaluation demo accounts</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {DEMO_ACCOUNTS.map(a => (
-              <button key={a.role} type="button" onClick={() => { setEmail(a.email); setPassword(''); setDemoNote(`Demo ${a.label.toLowerCase()} selected. Type the demo password.`); passwordRef.current?.focus(); }}
+              <button key={a.email} type="button" onClick={() => { setEmail(a.email); setPassword(''); setDemoNote(`Demo ${a.label.toLowerCase()} selected. Type the demo password.`); passwordRef.current?.focus(); }}
                       className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-plum transition hover:border-terracotta hover:text-terracotta-deep">
                 {a.label}
               </button>

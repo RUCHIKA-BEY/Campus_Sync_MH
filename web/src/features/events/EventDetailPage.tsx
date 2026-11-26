@@ -94,7 +94,7 @@ export function EventDetailPage() {
       {/* Hero */}
       <div className="relative isolate h-[min(52vh,440px)] overflow-hidden">
         <motion.img initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease: 'easeOut' }}
-                    src={event.image} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
+                    src={event.banner || event.image} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
         {/* Fade the photo into the ivory canvas so the title below stays readable. */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ivory from-20% via-ivory/75 via-45% to-plum-deep/25" aria-hidden />
         <div className="mx-auto flex h-full max-w-6xl items-start justify-between px-4 pt-5 sm:px-6">
@@ -137,8 +137,17 @@ export function EventDetailPage() {
 
           <section className="mt-8">
             <h2 className="text-xl font-bold">About this event</h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-plum-soft">{event.description}</p>
+            <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-plum-soft">{event.description}</p>
           </section>
+
+          {event.poster && (
+            <figure className="mt-8">
+              <a href={event.poster} target="_blank" rel="noreferrer" className="block w-fit overflow-hidden rounded-[22px] border border-line bg-white shadow-soft">
+                <img src={event.poster} alt={`Poster for ${event.title}`} loading="lazy" decoding="async" className="max-h-[560px] w-auto max-w-full object-contain" />
+              </a>
+              <figcaption className="mt-2 text-xs text-plum-muted">Event poster · opens full size</figcaption>
+            </figure>
+          )}
 
           {event.odEligible && (
             <section className="mt-6 flex gap-3 rounded-2xl border border-terracotta/20 bg-peach p-4 text-sm">

@@ -1,4 +1,4 @@
-// Creates (or refreshes) the four demo accounts used in evaluations.
+// Creates (or refreshes) the five demo accounts used in evaluations.
 //
 //   npm run demo:users
 //
@@ -36,6 +36,10 @@ const DEMO_USERS = [
     meta: { full_name: 'Arjun Patel', department_code: 'ECE' }, leadOf: 'IEEE Student Branch' },
   { email: 'dsa.demo@campussync.test', role: 'dsa',
     meta: { full_name: 'Dr. V. Ramanathan' } },
+  // The DSA head: an ordinary DSA account whose e-mail is configured in
+  // platform_settings.dsa_head_email (migration 12). Approves DSA events.
+  { email: 'dsa.head@campussync.test', role: 'dsa',
+    meta: { full_name: 'Prof. S. Iyer (DSA Head)' } },
   { email: 'admin.demo@campussync.test', role: 'admin',
     meta: { full_name: 'Campus Administrator' } },
 ];

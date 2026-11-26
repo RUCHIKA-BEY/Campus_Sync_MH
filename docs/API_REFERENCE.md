@@ -73,6 +73,20 @@ Errors come back as `{ message, code }`. Common codes: `42501` not allowed, `P00
 | `admin_dashboard()` | admin | `{ users_by_role, active_clubs, venues, events_by_status, upcoming_published, registrations_active, attendance_verified, attendance_rate, od_by_status, registrations_14d[], events_by_category[] }` |
 | `get_recommendations(p_limit integer DEFAULT 6)` | signed in | `TABLE(event_id, score, reasons text[], conflict_status)` |
 
+## 5a. DSA events, venue requests and media (migration 12)
+
+| Function | Caller | Returns / does |
+|---|---|---|
+| `is_dsa_head()` | signed in | boolean: the caller is the DSA account whose e-mail is `platform_settings.dsa_head_email` |
+| `can_review_event(p_event_id uuid)` | signed in | boolean: may the caller start/decide this proposal (UI hint; the review functions enforce the same rule) |
+| `can_edit_event_media(p_object_name text)` | used by Storage policies | boolean: the caller manages the event in `<event id>/…` and it is still editable |
+
+Changed behaviour:
+- `is_club_manager` is also true for active DSA members on the **Office of the DSA** club, so the DSA drafts, submits, publishes and runs check-in for its own events.
+- `start_event_review` / `review_event`: events of the Office of the DSA are decided by the **DSA head** (another DSA member only when the head created the event). Club events: any DSA member, as before. Nobody reviews their own event.
+- `submit_event` accepts a **venue request** (`requested_venue_name`, `_building`, `_capacity`) instead of a listed venue. `review_event(…, 'approve')` adds the requested venue to `venues` (or reuses a listed venue with the same name) and books it, with the usual clash check.
+- Images: upload to Storage bucket `event-media` at `<event id>/<poster|banner>-<time>.<ext>`, then set `events.poster_url` / `banner_url` (https only).
+
 ## 6. Direct table access (PostgREST)
 
 | Table | Visitor | Signed in (RLS narrows it further) |

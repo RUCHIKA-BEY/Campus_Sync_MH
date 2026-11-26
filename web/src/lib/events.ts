@@ -17,6 +17,9 @@ export interface CampusEvent {
   categoryName: string;
   venue: string;
   image: string;
+  /** Organizer-uploaded artwork (real events only). `image` falls back to a category photo. */
+  poster?: string | null;
+  banner?: string | null;
   startsAt: string;            // ISO with offset
   endsAt: string;
   registrationOpensAt: string;

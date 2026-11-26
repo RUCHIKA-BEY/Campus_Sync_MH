@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from 'react';
-import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban, QrCode } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { CalendarPlus, FilePen, Send, Trash2, Users, FileText, Clock3, CheckCircle2, MapPin, FlaskConical, RotateCcw, Megaphone, Ban, QrCode, ImagePlus, X } from 'lucide-react';
 import { ReasonDialog } from '../../components/ReasonDialog';
 import { RegistrantsDialog } from './RegistrantsDialog';
 import { AttendanceDialog } from './AttendanceDialog';
@@ -19,8 +19,9 @@ import { useCategories } from '../../lib/queries';
 import { isoFromIstInput, istInputFromIso } from '../../lib/time';
 import {
   EVENT_TYPES, STATUS_LABEL, useClubEvents, useDeleteDraft, useManagedClubs, useSaveDraft, useVenues, validateDraft,
-  type DraftInput, type EventScope, type EventStatus, type EventType, type ManagedClub, type OrgEvent,
+  type DraftInput, type EventScope, type EventStatus, type EventType, type ManagedClub, type MediaChanges, type OrgEvent,
 } from '../../lib/organizer';
+import { checkImageFile, type MediaKind } from '../../lib/media';
 
 const STATUS_TONE: Record<EventStatus, Parameters<typeof Badge>[0]['tone']> = {
   draft: 'muted', submitted: 'amber', under_review: 'amber', changes_requested: 'terracotta', approved: 'sage',
@@ -31,67 +32,77 @@ const EDITABLE: EventStatus[] = ['draft', 'changes_requested'];
 export function OrganizerPage() {
   const { profile } = useAuth();
   const clubs = useManagedClubs();
-  const clubIds = useMemo(() => (clubs.data ?? []).map(c => c.id), [clubs.data]);
-  const events = useClubEvents(clubIds);
-  const [editing, setEditing] = useState<OrgEvent | 'new' | null>(null);
 
   if (!isConfigured) {
     return <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6"><PageHeader kicker="Organizer workspace" title="Organizer console" />
       <Card className="flex items-start gap-3 p-6 text-plum-soft"><FlaskConical className="mt-0.5 size-5 text-amber" aria-hidden /><p>Event management needs the backend. Connect Supabase to use it.</p></Card></div>;
   }
 
-  const list = events.data ?? [];
-  const count = (s: EventStatus[]) => list.filter(e => s.includes(e.status)).length;
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <PageHeader kicker="Organizer workspace" title={`Hello, ${profile?.full_name.split(' ')[0] ?? 'organizer'}.`}
-        actions={clubIds.length > 0 && <Button onClick={() => setEditing('new')}><CalendarPlus className="size-4" />New event draft</Button>}>
+      <PageHeader kicker="Organizer workspace" title={`Hello, ${profile?.full_name.split(' ')[0] ?? 'organizer'}.`}>
         Draft events for your clubs, submit them for DSA approval, then publish once approved.
       </PageHeader>
 
       {clubs.isError ? <FormStatus kind="error">{friendlyError(clubs.error)}</FormStatus>
         : clubs.isPending ? <Skeleton className="h-40" />
-        : clubIds.length === 0 ? (
+        : clubs.data.length === 0 ? (
           <EmptyState icon={<Users className="size-6" />} title="You don’t manage a club yet">
             An admin needs to add you as a <strong>lead</strong> or <strong>coordinator</strong> of a club (Admin → Club leads). Until then the database won’t let you create events, by design.
           </EmptyState>
-        ) : (
-          <>
-            <div className="mb-8 flex flex-wrap gap-2">
-              {clubs.data!.map(c => <Badge key={c.id} tone="plum" className="px-3 py-1.5 text-xs">{c.name} · {c.membership_role}</Badge>)}
-            </div>
-            <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Drafts" value={count(['draft'])} icon={FilePen} loading={events.isPending} />
-              <StatCard label="Awaiting review" value={count(['submitted', 'under_review'])} icon={Clock3} loading={events.isPending} />
-              <StatCard label="Needs changes" value={count(['changes_requested', 'rejected'])} icon={FileText} loading={events.isPending} />
-              <StatCard label="Approved / published" value={count(['approved', 'published'])} icon={CheckCircle2} loading={events.isPending} />
-            </div>
-            <OrganizerInsights />
-
-            {events.isError ? <FormStatus kind="error">{friendlyError(events.error)}</FormStatus>
-              : events.isPending ? <Skeleton className="h-48" />
-              : list.length === 0 ? (
-                <EmptyState icon={<CalendarPlus className="size-6" />} title="No events yet"
-                  action={<Button onClick={() => setEditing('new')}><CalendarPlus className="size-4" />Create your first draft</Button>}>
-                  Drafts are private to your club until you submit them.
-                </EmptyState>
-              ) : (
-                <div className="grid gap-3">
-                  {list.map(e => <EventRow key={e.id} event={e} clubName={clubs.data!.find(c => c.id === e.club_id)?.name} onEdit={() => setEditing(e)} />)}
-                </div>
-              )}
-          </>
-        )}
-
-      {editing && clubs.data && (
-        <DraftDialog key={editing === 'new' ? 'new' : editing.id} event={editing === 'new' ? null : editing} clubs={clubs.data} onClose={() => setEditing(null)} />
-      )}
+        ) : <ClubEventsPanel clubs={clubs.data} insights={<OrganizerInsights />} />}
     </div>
   );
 }
 
-function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: string; onEdit: () => void }) {
+/**
+ * Drafts, submissions and live events for a set of clubs. Used by
+ * organizers (their clubs) and by the DSA (the Office of the DSA).
+ */
+export function ClubEventsPanel({ clubs, insights, reviewerLabel = 'DSA' }: { clubs: ManagedClub[]; insights?: ReactNode; reviewerLabel?: string }) {
+  const clubIds = useMemo(() => clubs.map(c => c.id), [clubs]);
+  const events = useClubEvents(clubIds);
+  const [editing, setEditing] = useState<OrgEvent | 'new' | null>(null);
+  const list = events.data ?? [];
+  const count = (s: EventStatus[]) => list.filter(e => s.includes(e.status)).length;
+
+  return (
+    <>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {clubs.map(c => <Badge key={c.id} tone="plum" className="px-3 py-1.5 text-xs">{c.name}{c.membership_role === 'dsa' ? '' : ` · ${c.membership_role}`}</Badge>)}
+        </div>
+        <Button onClick={() => setEditing('new')}><CalendarPlus className="size-4" />New event draft</Button>
+      </div>
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Drafts" value={count(['draft'])} icon={FilePen} loading={events.isPending} />
+        <StatCard label="Awaiting review" value={count(['submitted', 'under_review'])} icon={Clock3} loading={events.isPending} />
+        <StatCard label="Needs changes" value={count(['changes_requested', 'rejected'])} icon={FileText} loading={events.isPending} />
+        <StatCard label="Approved / published" value={count(['approved', 'published'])} icon={CheckCircle2} loading={events.isPending} />
+      </div>
+      {insights}
+
+      {events.isError ? <FormStatus kind="error">{friendlyError(events.error)}</FormStatus>
+        : events.isPending ? <Skeleton className="h-48" />
+        : list.length === 0 ? (
+          <EmptyState icon={<CalendarPlus className="size-6" />} title="No events yet"
+            action={<Button onClick={() => setEditing('new')}><CalendarPlus className="size-4" />Create your first draft</Button>}>
+            Drafts stay private until you submit them to the {reviewerLabel} for approval.
+          </EmptyState>
+        ) : (
+          <div className="grid gap-3">
+            {list.map(e => <EventRow key={e.id} event={e} clubName={clubs.find(c => c.id === e.club_id)?.name} reviewerLabel={reviewerLabel} onEdit={() => setEditing(e)} />)}
+          </div>
+        )}
+
+      {editing && (
+        <DraftDialog key={editing === 'new' ? 'new' : editing.id} event={editing === 'new' ? null : editing} clubs={clubs} onClose={() => setEditing(null)} />
+      )}
+    </>
+  );
+}
+
+function EventRow({ event, clubName, reviewerLabel, onEdit }: { event: OrgEvent; clubName?: string; reviewerLabel: string; onEdit: () => void }) {
   const remove = useDeleteDraft();
   const submit = useSubmitEvent();
   const reopen = useReopenEvent();
@@ -111,6 +122,9 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
 
   return (
     <Card className="flex flex-wrap items-center gap-4 p-4">
+      {(event.poster_url || event.banner_url) && (
+        <img src={(event.poster_url || event.banner_url)!} alt="" loading="lazy" decoding="async" className="size-16 shrink-0 rounded-xl border border-line object-cover" />
+      )}
       <div className="min-w-0 flex-1 basis-72">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={STATUS_TONE[event.status]}>{STATUS_LABEL[event.status]}</Badge>
@@ -120,10 +134,10 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
         <h3 className="mt-1.5 truncate text-base">{event.title}</h3>
         <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-plum-soft">
           <span>{longDate(event.starts_at)}, {shortDateTime(event.starts_at).split(', ')[1]}</span>
-          <span className="inline-flex items-center gap-1"><MapPin className="size-3" aria-hidden />{event.venue?.name ?? 'No venue yet'}</span>
+          <span className="inline-flex items-center gap-1"><MapPin className="size-3" aria-hidden />{event.venue?.name ?? (event.requested_venue_name ? `Requested: ${event.requested_venue_name}` : 'No venue yet')}</span>
           <span>Capacity {event.capacity}</span>
         </p>
-        {event.review_note && <p className="mt-2 rounded-xl bg-peach px-3 py-2 text-xs text-terracotta-deep"><strong>DSA note:</strong> {event.review_note}</p>}
+        {event.review_note && <p className="mt-2 rounded-xl bg-peach px-3 py-2 text-xs text-terracotta-deep"><strong>{reviewerLabel} note:</strong> {event.review_note}</p>}
         {event.status === 'cancelled' && event.cancellation_reason && <p className="mt-2 text-xs text-plum-soft">Cancelled: {event.cancellation_reason}</p>}
         {['draft', 'submitted', 'under_review', 'changes_requested', 'approved'].includes(event.status) && event.venue && (
           <div className="mt-2"><SchedulingWarnings eventId={event.id} scope={event.scope} /></div>
@@ -140,7 +154,7 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
           </>
         ) : <Button variant="ghost" size="sm" onClick={() => setConfirm(true)} aria-label={`Delete ${event.title}`}><Trash2 className="size-4" /></Button>)}
         {editable && (
-          <Button size="sm" loading={submit.isPending} onClick={() => act(submit, 'Submitted for DSA review.')}>
+          <Button size="sm" loading={submit.isPending} onClick={() => act(submit, `Submitted to the ${reviewerLabel} for review.`)}>
             <Send className="size-4" />{event.status === 'changes_requested' ? 'Resubmit' : 'Submit for approval'}
           </Button>
         )}
@@ -174,6 +188,8 @@ function EventRow({ event, clubName, onEdit }: { event: OrgEvent; clubName?: str
   );
 }
 
+const OTHER_VENUE = '__other';
+
 function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs: ManagedClub[]; onClose: () => void }) {
   const categories = useCategories();
   const venues = useVenues();
@@ -182,15 +198,20 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
   const [audience, setAudience] = useState<string[]>(() => (event?.audiences ?? []).map(a => a.department_id).filter((d): d is string => Boolean(d)));
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
+  const [media, setMedia] = useState<MediaChanges>({});
   const [f, setF] = useState({
     club_id: event?.club_id ?? clubs[0]!.id, title: event?.title ?? '', description: event?.description ?? '',
     category_id: event?.category_id ?? '', event_type: (event?.event_type ?? 'workshop') as EventType, scope: (event?.scope ?? 'club') as EventScope,
-    venue_id: event?.venue_id ?? '', starts: event ? istInputFromIso(event.starts_at) : '', ends: event ? istInputFromIso(event.ends_at) : '',
+    venue_id: event?.venue_id ?? (event?.requested_venue_name ? OTHER_VENUE : ''),
+    req_name: event?.requested_venue_name ?? '', req_building: event?.requested_venue_building ?? '',
+    req_capacity: event?.requested_venue_capacity ? String(event.requested_venue_capacity) : '',
+    starts: event ? istInputFromIso(event.starts_at) : '', ends: event ? istInputFromIso(event.ends_at) : '',
     opens: event ? istInputFromIso(event.registration_opens_at) : '', closes: event ? istInputFromIso(event.registration_closes_at) : '',
     capacity: String(event?.capacity ?? 50), od_eligible: event?.od_eligible ?? false,
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }));
-  const venue = venues.data?.find(v => v.id === f.venue_id);
+  const requesting = f.venue_id === OTHER_VENUE;
+  const venue = requesting ? undefined : venues.data?.find(v => v.id === f.venue_id);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -199,14 +220,18 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
     if (!f.starts || !f.ends || !f.opens || !f.closes) return setError('Fill in all dates and times.');
     const input: DraftInput = {
       club_id: f.club_id, title: f.title.trim(), description: f.description.trim(), category_id: f.category_id,
-      event_type: f.event_type, scope: f.scope, venue_id: f.venue_id || null,
+      event_type: f.event_type, scope: f.scope, venue_id: requesting ? null : f.venue_id || null,
+      // A request is sent only with "Other venue"; choosing a listed venue clears it.
+      requested_venue_name: requesting ? f.req_name.trim() : null,
+      requested_venue_building: requesting ? f.req_building.trim() || null : null,
+      requested_venue_capacity: requesting ? Number(f.req_capacity) : null,
       starts_at: isoFromIstInput(f.starts), ends_at: isoFromIstInput(f.ends),
       registration_opens_at: isoFromIstInput(f.opens), registration_closes_at: isoFromIstInput(f.closes),
       capacity: Number(f.capacity), od_eligible: f.od_eligible,
     };
     const problem = validateDraft(input, venue?.capacity);
     if (problem) return setError(problem);
-    save.mutate({ id: event?.id, input, audienceDeptIds: f.scope === 'club' ? [] : audience }, {
+    save.mutate({ id: event?.id, input, audienceDeptIds: f.scope === 'club' ? [] : audience, media, current: event ?? undefined }, {
       onSuccess: () => { toast(event ? 'Draft updated.' : 'Draft saved.', 'success'); onClose(); },
       onError: err => setError(friendlyError(err)),
     });
@@ -221,6 +246,12 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
           <textarea value={f.description} onChange={set('description')} rows={4} maxLength={5000}
             className="w-full rounded-xl border border-line bg-field px-3.5 py-2.5 text-base text-plum focus:border-plum focus:bg-white focus:outline-none focus:ring-3 focus:ring-plum/10" />
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ImagePicker kind="poster" label="Poster" hint="Shown on event cards and behind the event page."
+            current={event?.poster_url ?? null} change={media.poster} onChange={v => setMedia(m => ({ ...m, poster: v }))} onError={setError} />
+          <ImagePicker kind="banner" label="Banner" hint="Wide image across the top of the event page (about 3:1)."
+            current={event?.banner_url ?? null} change={media.banner} onChange={v => setMedia(m => ({ ...m, banner: v }))} onError={setError} />
+        </div>
         <div className="grid gap-4 sm:grid-cols-3">
           {clubs.length > 1 && <Field label="Club"><Select value={f.club_id} onChange={set('club_id')}>{clubs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>}
           <Field label="Category">
@@ -236,13 +267,23 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Venue" hint={venue ? `Holds ${venue.capacity}` : 'Optional for drafts, required to submit'}>
+          <Field label="Venue" hint={venue ? `Holds ${venue.capacity}` : requesting ? 'The DSA checks availability and adds it to the list when approving' : 'Optional for drafts, required to submit'}>
             <Select value={f.venue_id} onChange={set('venue_id')}>
-              <option value="">Not decided yet</option>{venues.data?.map(v => <option key={v.id} value={v.id}>{v.name}{v.building ? ` · ${v.building}` : ''}</option>)}
+              <option value="">Not decided yet</option>
+              {venues.data?.map(v => <option key={v.id} value={v.id}>{v.name}{v.building ? ` · ${v.building}` : ''}</option>)}
+              <option value={OTHER_VENUE}>Other venue (request DSA approval)…</option>
             </Select>
           </Field>
           <Field label="Capacity"><Input type="number" min={1} inputMode="numeric" value={f.capacity} onChange={set('capacity')} /></Field>
         </div>
+        {requesting && (
+          <fieldset className="grid gap-4 rounded-2xl border border-dashed border-mauve-strong bg-cream p-4 sm:grid-cols-3">
+            <legend className="px-1 text-[13px] font-semibold text-plum-soft">Requested venue</legend>
+            <Field label="Venue name"><Input value={f.req_name} onChange={set('req_name')} maxLength={120} placeholder="e.g. Central Library Lawn" /></Field>
+            <Field label="Building / area" hint="Optional"><Input value={f.req_building} onChange={set('req_building')} maxLength={120} /></Field>
+            <Field label="Venue capacity"><Input type="number" min={1} inputMode="numeric" value={f.req_capacity} onChange={set('req_capacity')} /></Field>
+          </fieldset>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Starts"><Input type="datetime-local" value={f.starts} onChange={set('starts')} /></Field>
           <Field label="Ends"><Input type="datetime-local" value={f.ends} onChange={set('ends')} /></Field>
@@ -274,5 +315,56 @@ function DraftDialog({ event, clubs, onClose }: { event: OrgEvent | null; clubs:
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** Choose, preview, replace or remove a poster/banner (JPG, PNG or WebP, max 2 MB). */
+function ImagePicker({ kind, label, hint, current, change, onChange, onError }: {
+  kind: MediaKind; label: string; hint: string; current: string | null;
+  change: File | null | undefined; onChange: (v: File | null | undefined) => void; onError: (msg: string | null) => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!change) { setPreview(null); return; }
+    const url = URL.createObjectURL(change);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [change]);
+  // undefined = keep current, null = remove, File = new upload
+  const shown = change === null ? null : preview ?? current;
+  const inputId = `media-${kind}`;
+
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-[13px] font-semibold text-plum-soft">{label} <span className="font-normal text-plum-muted">(optional)</span></span>
+      <div className={`relative overflow-hidden rounded-2xl border border-line bg-field ${kind === 'banner' ? 'aspect-[3/1]' : 'aspect-[4/3]'}`}>
+        {shown ? (
+          <>
+            <img src={shown} alt={`${label} preview`} className="size-full object-cover" />
+            <button type="button" onClick={() => onChange(current ? null : undefined)} aria-label={`Remove ${label.toLowerCase()}`}
+                    className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-white/95 text-plum shadow-soft hover:text-terracotta-deep">
+              <X className="size-4" />
+            </button>
+          </>
+        ) : (
+          <label htmlFor={inputId} className="grid size-full cursor-pointer place-items-center p-2 text-center text-xs font-semibold text-plum-soft hover:text-plum">
+            <span className="grid justify-items-center gap-1"><ImagePlus className="size-5" aria-hidden />Add {label.toLowerCase()}<span className="font-normal text-plum-muted">JPG, PNG or WebP · max 2 MB</span></span>
+          </label>
+        )}
+      </div>
+      <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          const problem = checkImageFile(file);
+          onError(problem);
+          if (!problem) onChange(file);
+        }} />
+      <p className="flex items-center justify-between gap-2 text-xs text-plum-muted">
+        <span>{hint}</span>
+        {shown && <label htmlFor={inputId} className="shrink-0 cursor-pointer font-semibold text-terracotta-deep hover:underline">Replace</label>}
+      </p>
+    </div>
   );
 }

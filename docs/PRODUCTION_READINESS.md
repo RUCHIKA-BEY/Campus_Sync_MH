@@ -43,16 +43,18 @@ There are two independent pieces of evidence.
 - DSA: no OD queue.
 - Admin: no overview charts.
 
+> **Update (migration 12 added later):** the frontend now also reads columns from migration 12 (`banner_url`, venue requests). Until migrations 9–**12** are applied, **every event list on the site fails (HTTP 400)**. Apply the database first, then deploy the frontend.
+
 **Fix (you run it; the review did not):**
 
 ```powershell
 npm run db:push:dry
 ```
-Expect it to list exactly the three migrations above, then:
+Expect it to list the three migrations above **plus `20261125000100_dsa_events_venue_requests_media`**, then:
 ```powershell
 npm run db:push
 ```
-Then run `supabase/verify_setup.sql` in the SQL Editor. Expect history count `11` and latest version `20261124000500`. Finally, re-run the probe (or `npm run check:supabase`).
+Then run `supabase/verify_setup.sql` in the SQL Editor. Expect history count `12` and latest version `20261125000100` (both checked by the updated checklist). Finally, re-run the probe (or `npm run check:supabase`).
 
 > Note: if Stages 6–8 were tested earlier with "all good", that testing was not against this hosted project's current schema. It may have been the local PGlite tests or sample mode. The hosted acceptance tests in §5 must be re-run after the push.
 

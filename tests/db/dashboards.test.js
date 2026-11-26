@@ -52,7 +52,7 @@ test('student dashboard: counts are about the caller only', async () => {
     assert.equal(d.upcoming_registrations, 1);
     assert.equal(d.clubs_followed, 1);
     assert.equal(d.upcoming_public_events, 2);
-    assert.equal(d.active_clubs, 6);
+    assert.equal(d.active_clubs, 7); // 6 seeded clubs + Office of the DSA (migration 12)
     await asUser(db, null, () => expectFail(db, 'select public.student_dashboard()', [], '42501'));
   });
 });

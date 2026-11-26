@@ -6,7 +6,8 @@
 -- rows marked [m8] need 20261124000200 (event lifecycle, Stage 5);
 -- rows marked [m9] need 20261124000300 (registration & conflicts, Stage 6);
 -- rows marked [m10] need 20261124000400 (OD & attendance, Stage 7);
--- rows marked [m11] need 20261124000500 (dashboards & recommendations, Stage 8).
+-- rows marked [m11] need 20261124000500 (dashboards & recommendations, Stage 8);
+-- rows marked [m12] need 20261125000100 (DSA events, venue requests, event media).
 -- The last two rows read the Supabase CLI's migration history table
 -- (supabase_migrations.schema_migrations); before you run
 -- `supabase migration repair` they show "no history table yet".
@@ -101,8 +102,20 @@ checks(check_name, expected, actual, passed) as (
   ('[m11] visitors can call admin_dashboard (must be false)', 'false',
      (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')), false)::text
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'admin_dashboard'), null),
+  ('[m12] events have banner and venue-request columns', '4',
+     (select count(*)::text from information_schema.columns where table_schema = 'public' and table_name = 'events'
+      and column_name in ('banner_url','requested_venue_name','requested_venue_building','requested_venue_capacity')), null),
+  ('[m12] Office of the DSA host club', '1', (select count(*)::text from public.clubs where is_dsa_office), null),
+  ('[m12] DSA head e-mail configured', 'yes',
+     (select case when count(*) = 1 then 'yes' else 'no' end from public.platform_settings where key = 'dsa_head_email'), null),
+  ('[m12] public event-media bucket (2 MB, images only)', 'true / 2097152',
+     (select public::text || ' / ' || file_size_limit::text from storage.buckets where id = 'event-media'), null),
+  ('[m12] DSA-head functions for logged-in users', '2',
+     (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname in ('is_dsa_head','can_review_event')
+        and has_function_privilege('authenticated', p.oid, 'EXECUTE')), null),
   ('categories (migration data)', '8',  (select count(*)::text from public.categories), null),
-  ('platform settings (migration data)', '6', (select count(*)::text from public.platform_settings), null),
+  ('platform settings (migration data)', '7', (select count(*)::text from public.platform_settings), null),
   ('departments (seed, at least 1)', '≥ 1', (select count(*)::text from public.departments),
      (select count(*) > 0 from public.departments)),
   ('venues (seed, at least 1)', '≥ 1', (select count(*)::text from public.venues),
@@ -111,9 +124,9 @@ checks(check_name, expected, actual, passed) as (
      (select count(*) > 0 from public.clubs)),
   ('academic terms (seed, at least 1)', '≥ 1', (select count(*)::text from public.academic_terms),
      (select count(*) > 0 from public.academic_terms)),
-  ('migration history: versions recorded', '11',
+  ('migration history: versions recorded', '12',
      coalesce((select applied_count from history), 'no history table yet'), null),
-  ('migration history: latest version', '20261124000500',
+  ('migration history: latest version', '20261125000100',
      coalesce((select latest_version from history), 'no history table yet'), null)
 )
 select case when coalesce(passed, expected = actual) then '✅' else '❌' end as ok,

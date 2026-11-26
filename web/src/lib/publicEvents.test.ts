@@ -6,7 +6,7 @@ const row = {
   id: 'e1', title: 'Real Hack Night', description: 'An approved, published event.', status: 'published' as const,
   scope: 'university' as const, starts_at: '2027-01-20T10:00:00+05:30', ends_at: '2027-01-20T18:00:00+05:30',
   registration_opens_at: '2027-01-01T09:00:00+05:30', registration_closes_at: '2027-01-18T23:59:00+05:30',
-  capacity: 80, od_eligible: true, poster_url: null, cancellation_reason: null,
+  capacity: 80, od_eligible: true, poster_url: null, banner_url: null, cancellation_reason: null,
   club: { name: 'Build Club' }, venue: { name: 'Makerspace 1' }, category: { name: 'Hackathons', slug: 'hackathons' },
 };
 const during = new Date('2027-01-10T12:00:00+05:30');

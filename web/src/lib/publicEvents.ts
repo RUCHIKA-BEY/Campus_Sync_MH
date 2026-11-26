@@ -8,11 +8,11 @@ import { CATEGORY_IMAGE, DEFAULT_EVENT_IMAGE, SAMPLE_EVENTS, type CampusEvent } 
 export interface EventRow {
   id: string; title: string; description: string; status: 'published' | 'completed' | 'cancelled';
   scope: CampusEvent['scope']; starts_at: string; ends_at: string; registration_opens_at: string; registration_closes_at: string;
-  capacity: number; od_eligible: boolean; poster_url: string | null; cancellation_reason: string | null;
+  capacity: number; od_eligible: boolean; poster_url: string | null; banner_url?: string | null; cancellation_reason: string | null;
   club: { name: string } | null; venue: { name: string } | null; category: { name: string; slug: string } | null;
 }
 
-export const EVENT_COLUMNS = 'id, title, description, status, scope, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, poster_url, cancellation_reason, club:clubs(name), venue:venues(name), category:categories(name, slug)';
+export const EVENT_COLUMNS = 'id, title, description, status, scope, starts_at, ends_at, registration_opens_at, registration_closes_at, capacity, od_eligible, poster_url, banner_url, cancellation_reason, club:clubs(name), venue:venues(name), category:categories(name, slug)';
 
 export function toCampusEvent(r: EventRow): CampusEvent {
   const slug = r.category?.slug ?? 'other';
@@ -21,6 +21,7 @@ export function toCampusEvent(r: EventRow): CampusEvent {
     club: r.club?.name ?? 'Campus club', categorySlug: slug, categoryName: r.category?.name ?? 'Event',
     venue: r.venue?.name ?? 'Venue to be announced',
     image: r.poster_url || CATEGORY_IMAGE[slug] || DEFAULT_EVENT_IMAGE,
+    poster: r.poster_url ?? null, banner: r.banner_url ?? null,
     startsAt: r.starts_at, endsAt: r.ends_at,
     registrationOpensAt: r.registration_opens_at, registrationClosesAt: r.registration_closes_at,
     capacity: r.capacity, registeredCount: null, // filled in by withSeats() from get_event_seats

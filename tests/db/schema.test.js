@@ -22,7 +22,7 @@ test('migrations + seed apply cleanly and load reference data', async () => {
   // Migration-owned data: exact.
   const fixed = await one(db, `select (select count(*) from public.categories)::int as categories,
                                       (select count(*) from public.platform_settings)::int as settings`);
-  assert.deepEqual(fixed, { categories: 8, settings: 6 });
+  assert.deepEqual(fixed, { categories: 8, settings: 7 }); // + dsa_head_email (migration 12)
   // Seed data is yours to edit: just require that each table got rows.
   const seeded = await one(db, SEED_COUNTS_SQL);
   for (const [table, n] of Object.entries(seeded)) assert.ok(n > 0, `seed.sql inserted no ${table}`);

@@ -13,7 +13,7 @@ function useRpc<V>(fn: string, toArgs: (v: V) => Args) {
       if (error) throw error;
     },
     onSettled: () => {
-      for (const key of ['club-events', 'dsa-proposals', 'public-events', 'public-event', 'admin-stats', 'audit']) {
+      for (const key of ['club-events', 'dsa-proposals', 'public-events', 'public-event', 'admin-stats', 'audit', 'venues', 'can-review']) {
         qc.invalidateQueries({ queryKey: [key] });
       }
     },

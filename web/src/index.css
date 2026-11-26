@@ -82,6 +82,11 @@
 .pb-tabbar { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 @media (min-width: 768px) { .pb-tabbar { padding-bottom: 0; } }
 
+/* Page change: a short rise-in. Starts at 0.4 opacity, so a page is never fully hidden. */
+@keyframes page-in {
+  from { opacity: 0.4; transform: translateY(6px); }
+}
+
 /* Brand loader: the whole logo fades; its geometry is never animated. */
 @keyframes brand-breathe {
   0%, 100% { opacity: 1; }
