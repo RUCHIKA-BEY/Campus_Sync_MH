@@ -39,6 +39,11 @@ const config = {
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),
     emptyOutDir: true,
+    // Built files go to a fresh folder. Before Nov 2026, a missing file under
+    // /assets/ was answered with index.html and cached for a year, so some
+    // browsers hold broken copies under the old names. New names avoid them.
+    // Keep this under assets/ so the vercel.json cache and rewrite rules apply.
+    assetsDir: 'assets/v2',
   },
   test: {
     include: ['src/**/*.test.ts'],
