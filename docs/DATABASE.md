@@ -1,6 +1,6 @@
 # CampusSync — Database
 
-PostgreSQL on Supabase: **21 tables, 75 RLS policies (+3 Storage policies), 11 triggers, 40 callable functions**, built by 13 migrations in `supabase/migrations/`. The original design and decisions (D1–D9) are in [SCHEMA_PROPOSAL.md](SCHEMA_PROPOSAL.md), which includes the ER diagram. This page is the as-built reference.
+PostgreSQL on Supabase: **21 tables, 75 RLS policies (+3 Storage policies), 11 triggers, 41 callable functions**, built by 14 migrations in `supabase/migrations/`. The original design and decisions (D1–D9) are in [SCHEMA_PROPOSAL.md](SCHEMA_PROPOSAL.md), which includes the ER diagram. This page is the as-built reference.
 
 ## 1. Migrations
 
@@ -19,6 +19,7 @@ PostgreSQL on Supabase: **21 tables, 75 RLS policies (+3 Storage policies), 11 t
 | 11 | `20261124000500_dashboards_and_recommendations` | Role dashboards, recommendations |
 | 12 | `20261125000100_dsa_events_venue_requests_media` | Office of the DSA host club + DSA-head approval; venue requests (added to the venue list on approval); poster/banner columns and the public `event-media` Storage bucket (JPG/PNG/WebP, 2 MB) |
 | 13 | `20261126000100_lunch_not_a_clash` | Timetable entries named "Lunch" (or Lunch break/hour/time) are free time: skipped by the clash check, still shown in the timetable |
+| 14 | `20261128000100_schedule_preview` | `check_timetable_window(start, end)`: the signed-in student's OWN timetable against a time window, using the same `_timetable_conflict`. Lets sample events (which exist only in the browser) show a clash preview. Stores nothing; registration is unchanged |
 
 Seed data (fictional, development only) is in `supabase/seed.sql`; it isn't a migration.
 

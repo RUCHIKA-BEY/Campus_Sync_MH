@@ -46,7 +46,17 @@ Written by the functions through `notify()` with a **dedupe key** (e.g. `event:<
 
 ## 3. Timetable conflict detection (Stage 6, `_timetable_conflict`)
 
-**One authoritative implementation, in the database.** The "Can I attend?" panel calls it through `check_timetable_conflict(event)`, and registration calls the same function again, so the browser can never fake a result.
+**One authoritative implementation, in the database.** The event page's **Schedule Compatibility** section calls it through `check_timetable_conflict(event)`, the app calls it again right before registering (and asks the student to confirm if anything clashes), and `register_for_event` runs it a final time and records the result, so the browser can never fake a result. The pass shows the same answer as a one-line *Schedule status*.
+
+Where each answer comes from:
+
+| Event | Backend | Check | Shown as |
+|---|---|---|---|
+| Real (in the database) | connected | `check_timetable_conflict(event)` | the student's verified result |
+| Sample (built into the app) | connected | `check_timetable_window(start, end)` (migration 14): your real timetable, same function | **Demo preview** (sample events can't be registered for real) |
+| Sample | not connected | `web/src/lib/conflict.ts` on a labelled sample week (class 3CSE02) | **Demo preview**, sample timetable |
+
+The browser engine exists only because there is no database to ask in sample mode. `tests/fixtures/schedule-cases.json` runs against both it and the database function, so they cannot disagree. Loading shows *Checking your schedule…*; a failed request shows *Conflict check unavailable*, never "no conflict".
 
 ### The overlap rule
 

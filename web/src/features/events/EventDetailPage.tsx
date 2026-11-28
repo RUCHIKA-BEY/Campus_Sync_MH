@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, CalendarClock, CalendarRange, MapPin, Ticket, UsersRound, BadgeCheck, CalendarX2 } from 'lucide-react';
@@ -12,7 +12,8 @@ import { Skeleton } from '../../components/ui';
 import { useDemoRegistrations } from '../../lib/demo';
 import { friendlyError } from '../../lib/errors';
 import { CONFLICT_LABEL, useCancelRegistration, useMyRegistrations, useRegister } from '../../lib/registration';
-import { CanIAttend } from './CanIAttend';
+import { RegisterCheckDialog, ScheduleChip, ScheduleCompatibility, blockedByPolicy } from './ScheduleCompatibility';
+import { useFullConflictPolicy, useScheduleCheck, type ScheduleState } from '../../lib/schedule';
 import { OdPanel } from './OdPanel';
 import { useMyAttendance } from '../../lib/od';
 import { BookmarkButton, OdBadge, SampleNotice, StatusBadge, useNow } from './eventUi';
@@ -34,6 +35,17 @@ export function EventDetailPage() {
   const demo = useDemoRegistrations();
   const [ticketOpen, setTicketOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const schedule = useScheduleCheck(event, now);
+  const allowFull = useFullConflictPolicy();
+  // Fresh clash check right before registering; asks first if anything clashes.
+  const [precheck, setPrecheck] = useState<ScheduleState | null>(null);
+  const [prechecking, setPrechecking] = useState(false);
+  const pending = useRef<(() => void) | null>(null);
+
+  // /events/:id#schedule (from the pass) scrolls to the clash details.
+  useEffect(() => {
+    if (location.hash === '#schedule' && event) document.getElementById('schedule')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.hash, event]);
 
   if (isLoading) {
     return <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6"><Skeleton className="h-72 rounded-[28px]" /><Skeleton className="mt-6 h-10 w-2/3" /></div>;
@@ -60,15 +72,37 @@ export function EventDetailPage() {
   const fill = event.registeredCount === null ? null : Math.min(100, Math.round((event.registeredCount / event.capacity) * 100));
   const left = seatsLeft(event);
 
+  const needsConfirm = (s: ScheduleState) => s.kind === 'unavailable' || (s.kind === 'result' && s.result.status !== 'no_conflict');
+  const checkThen = async (proceed: () => void) => {
+    setPrechecking(true);
+    const fresh = await schedule.recheck();
+    setPrechecking(false);
+    if (!needsConfirm(fresh)) { proceed(); return; }
+    pending.current = proceed;
+    setPrecheck(fresh);
+  };
+  const retryPrecheck = async () => {
+    setPrechecking(true);
+    const fresh = await schedule.recheck();
+    setPrechecking(false);
+    if (needsConfirm(fresh)) { setPrecheck(fresh); return; }
+    setPrecheck(null);
+    pending.current?.();
+  };
+  // The campus rule (D8) as currently known; the database enforces it anyway.
+  const blockedNow = schedule.state.kind === 'result' && blockedByPolicy(schedule.state.result, event.odEligible, allowFull);
+
   const onRegister = () => {
     if (isConfigured && !session) {
       toast('Sign in to register for events.', 'info');
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
-    demo.register(event.id);
-    toast('Demo registration saved on this device.', 'success');
-    setTicketOpen(true);
+    void checkThen(() => {
+      demo.register(event.id);
+      toast('Demo registration saved on this device.', 'success');
+      setTicketOpen(true);
+    });
   };
 
   const onRegisterReal = () => {
@@ -79,14 +113,14 @@ export function EventDetailPage() {
     }
     // The database re-checks everything (status, window, duplicates,
     // capacity with a row lock, timetable) and returns the conflict result.
-    register.mutate(event.id, {
+    void checkThen(() => register.mutate(event.id, {
       onSuccess: r => {
         setFreshPass(r.pass_code);
         toast(`You’re registered. ${CONFLICT_LABEL[r.conflict.status]}.`, 'success');
         setTicketOpen(true);
       },
       onError: e => toast(friendlyError(e), 'error'),
-    });
+    }));
   };
 
   return (
@@ -135,6 +169,8 @@ export function EventDetailPage() {
             })}
           </div>
 
+          <ScheduleCompatibility state={schedule.state} event={event} onRetry={() => void schedule.retry()} />
+
           <section className="mt-8">
             <h2 className="text-xl font-bold">About this event</h2>
             <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-plum-soft">{event.description}</p>
@@ -173,9 +209,7 @@ export function EventDetailPage() {
             </>)}
             <p className="mt-2 text-sm text-plum-soft">{statusLabel(status, event)}</p>
 
-            {!event.isSample && session && isStudent && event.lifecycle === 'published' && Date.parse(event.endsAt) > now.getTime() && (
-              <div className="mt-4"><p className="mb-2 text-xs font-bold tracking-wide text-plum-muted uppercase">Can I attend?</p><CanIAttend eventId={event.id} /></div>
-            )}
+            {!(registration || realPass) && <ScheduleChip state={schedule.state} />}
 
             <div className="mt-5 grid gap-2.5">
               {event.isSample ? (
@@ -190,7 +224,7 @@ export function EventDetailPage() {
                       </div>
                     ) : <Button variant="ghost" onClick={() => setConfirmCancel(true)}>Cancel registration</Button>}
                   </>
-                ) : canRegister(status) ? <Button size="lg" onClick={onRegister}>Register now (demo)</Button>
+                ) : canRegister(status) ? <Button size="lg" onClick={onRegister} loading={prechecking} loadingLabel="Checking schedule…">Register now (demo)</Button>
                   : <Button size="lg" disabled>{statusLabel(status, event)}</Button>
               ) : realPass ? (
                 <>
@@ -214,17 +248,26 @@ export function EventDetailPage() {
                 <Button size="lg" disabled>{statusLabel(status, event)}</Button>
               ) : session && !isStudent ? (
                 <Button size="lg" disabled>Only students register for events</Button>
+              ) : blockedNow ? (
+                <>
+                  <Button size="lg" disabled>Registration unavailable</Button>
+                  <p className="text-xs text-plum-soft">This event clashes with your classes for its whole length and isn’t OD-eligible. Campus rule: such events can’t be registered for. <a href="#schedule" className="font-semibold text-terracotta-deep underline">See the clash</a></p>
+                </>
               ) : (
-                <Button size="lg" onClick={onRegisterReal} loading={register.isPending} loadingLabel="Registering…">
+                <Button size="lg" onClick={onRegisterReal} loading={register.isPending || prechecking} loadingLabel={prechecking ? 'Checking schedule…' : 'Registering…'}>
                   {session ? 'Register now' : 'Sign in to register'}
                 </Button>
               )}
             </div>
-            {event.isSample && <p className="mt-4 text-xs text-plum-muted">Sample event: no timetable check. Real events show your “Can I attend?” result here.</p>}
+            {event.isSample && <p className="mt-4 text-xs text-plum-muted">Sample event: registration is a demo saved on this device only.</p>}
           </Card>
         </aside>
       </div>
 
+      <RegisterCheckDialog state={precheck} event={event} allowFull={allowFull} retrying={prechecking}
+        onCancel={() => { setPrecheck(null); pending.current = null; }}
+        onConfirm={() => { setPrecheck(null); pending.current?.(); pending.current = null; }}
+        onRetry={() => void retryPrecheck()} />
       {event.isSample && registration && <TicketDialog event={event} registration={registration} open={ticketOpen} onOpenChange={setTicketOpen} />}
       {!event.isSample && realPass && <TicketDialog demo={false} checkedInAt={attended?.checked_in_at ?? null} event={event} registration={{ passCode: realPass }} open={ticketOpen} onOpenChange={setTicketOpen} />}
     </div>

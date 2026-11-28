@@ -9,6 +9,7 @@
 -- rows marked [m11] need 20261124000500 (dashboards & recommendations, Stage 8);
 -- rows marked [m12] need 20261125000100 (DSA events, venue requests, event media);
 -- rows marked [m13] need 20261126000100 (lunch entries are not class clashes).
+-- rows marked [m14] need 20261128000100 (timetable check for sample events).
 -- The last two rows read the Supabase CLI's migration history table
 -- (supabase_migrations.schema_migrations); before you run
 -- `supabase migration repair` they show "no history table yet".
@@ -119,6 +120,10 @@ checks(check_name, expected, actual, passed) as (
      (select case when count(*) = 1 then 'yes' else 'no' end
              || ' / ' || case when bool_or(has_function_privilege('authenticated', p.oid, 'EXECUTE')) then 'yes' else 'no' end
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = '_is_lunch'), null),
+  ('[m14] window check: logged-in yes / visitors no', 'yes / no',
+     (select case when bool_or(has_function_privilege('authenticated', p.oid, 'EXECUTE')) then 'yes' else 'no' end
+             || ' / ' || case when bool_or(has_function_privilege('anon', p.oid, 'EXECUTE')) then 'yes' else 'no' end
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'check_timetable_window'), null),
   ('categories (migration data)', '8',  (select count(*)::text from public.categories), null),
   ('platform settings (migration data)', '7', (select count(*)::text from public.platform_settings), null),
   ('departments (seed, at least 1)', '≥ 1', (select count(*)::text from public.departments),
@@ -129,9 +134,9 @@ checks(check_name, expected, actual, passed) as (
      (select count(*) > 0 from public.clubs)),
   ('academic terms (seed, at least 1)', '≥ 1', (select count(*)::text from public.academic_terms),
      (select count(*) > 0 from public.academic_terms)),
-  ('migration history: versions recorded', '13',
+  ('migration history: versions recorded', '14',
      coalesce((select applied_count from history), 'no history table yet'), null),
-  ('migration history: latest version', '20261126000100',
+  ('migration history: latest version', '20261128000100',
      coalesce((select latest_version from history), 'no history table yet'), null)
 )
 select case when coalesce(passed, expected = actual) then '✅' else '❌' end as ok,

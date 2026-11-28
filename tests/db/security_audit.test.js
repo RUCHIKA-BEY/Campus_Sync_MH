@@ -29,7 +29,7 @@ test('logged-in users can call exactly the designed API (no internal helpers)', 
   assert.deepEqual(fns, [
     'admin_dashboard', 'admin_set_user_active', 'admin_set_user_role', 'can_edit_event_media', 'can_review_event', 'can_review_od',
     'cancel_event', 'cancel_registration',
-    'check_in', 'check_timetable_conflict', 'close_attendance_session', 'complete_event', 'current_app_role', 'decide_od',
+    'check_in', 'check_timetable_conflict', 'check_timetable_window', 'close_attendance_session', 'complete_event', 'current_app_role', 'decide_od',
     'dsa_dashboard', 'event_scheduling_warnings', 'get_event_attendance', 'get_event_registrants', 'get_event_seats',
     'get_od_queue', 'get_recommendations', 'has_role', 'is_club_manager', 'is_dsa_head', 'manages_event', 'mark_attendance_manual',
     'my_attendance', 'my_od_requests', 'open_attendance_session', 'organizer_dashboard', 'publish_event',

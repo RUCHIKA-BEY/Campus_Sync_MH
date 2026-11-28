@@ -18,19 +18,6 @@ export interface ConflictResult {
   timetable_complete: boolean; od_eligible: boolean; conflicts: ConflictItem[];
 }
 
-export function useConflictCheck(eventId: string | undefined, enabled: boolean) {
-  const { session } = useAuth();
-  return useQuery({
-    queryKey: ['conflict', session?.user.id, eventId],
-    enabled: Boolean(supabase && session && eventId && enabled),
-    queryFn: async (): Promise<ConflictResult> => {
-      const { data, error } = await requireSupabase().rpc('check_timetable_conflict', { p_event_id: eventId });
-      if (error) throw error;
-      return data as ConflictResult;
-    },
-  });
-}
-
 export interface MyRegistration {
   id: string; status: 'registered' | 'cancelled'; pass_code: string; conflict_status: ConflictStatus;
   conflict_minutes: number; registered_at: string; event: CampusEvent;

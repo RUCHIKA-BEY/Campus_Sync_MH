@@ -7,6 +7,9 @@ import { useAuth } from '../../auth/AuthProvider';
 import { longDate, timeRange, type CampusEvent } from '../../lib/events';
 import type { DemoRegistration } from '../../lib/demo';
 import { Badge } from '../../components/ui';
+import { useScheduleCheck } from '../../lib/schedule';
+import { useNow } from './eventUi';
+import { ScheduleStatusLine } from './ScheduleCompatibility';
 
 export function TicketDialog({ event, registration, open, onOpenChange, demo = true, checkedInAt = null }: {
   event: CampusEvent; registration: Pick<DemoRegistration, 'passCode'>; open: boolean; onOpenChange: (o: boolean) => void;
@@ -18,6 +21,8 @@ export function TicketDialog({ event, registration, open, onOpenChange, demo = t
   const { profile } = useAuth();
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  // Display only: the QR payload and check-in are untouched by this.
+  const schedule = useScheduleCheck(event, useNow());
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +72,8 @@ export function TicketDialog({ event, registration, open, onOpenChange, demo = t
               <div className="col-span-2"><dt className="text-xs text-plum-muted">When</dt>
                 <dd className="flex items-center gap-1.5 font-semibold"><Clock3 className="size-4 text-plum-muted" aria-hidden />{longDate(event.startsAt)} · {timeRange(event)}</dd></div>
             </dl>
-            <div className="mx-6 mt-5 flex items-center justify-between rounded-2xl bg-cream px-4 py-3 text-sm">
+            <ScheduleStatusLine state={schedule.state} detailsHref={`/events/${event.id}#schedule`} onDetails={() => onOpenChange(false)} />
+            <div className="mx-6 mt-3 flex items-center justify-between rounded-2xl bg-cream px-4 py-3 text-sm">
               <span className="flex items-center gap-2 font-semibold"><CircleDashed className="size-4 text-plum-muted" aria-hidden />Venue check-in</span>
               {checkedInAt
                 ? <Badge tone="sage">Checked in {new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }).format(new Date(checkedInAt))}</Badge>
