@@ -7,7 +7,7 @@ import { useToast } from '../../components/Toaster';
 import { isConfigured } from '../../lib/env';
 import { friendlyError } from '../../lib/errors';
 import { DAYS, DAY_SHORT, campusWeekday, clockLabel, toMinutes, toTimeInput } from '../../lib/time';
-import { BOOKABLE, buildRows, periodSpan, yFor } from '../../lib/periods';
+import { BOOKABLE, buildRows, isLunch, periodSpan, yFor } from '../../lib/periods';
 import { pickCurrentTerm, useDeleteSlot, useMySlots, useSaveSlot, useTerms, type Slot, type SlotInput } from '../../lib/timetable';
 
 const PX_PER_MIN = 2; // a 55-minute period is about 110px wide (the grid stretches to fit)
@@ -21,7 +21,8 @@ const TINTS = [
   'bg-[#edf3fb] border-cat-blue/30 text-cat-blue',
   'bg-[#f1ebf8] border-cat-purple/30 text-cat-purple',
 ];
-const tintFor = (s: string) => TINTS[[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % TINTS.length]!;
+const LUNCH_TINT = 'border-dashed bg-white/60 border-plum-muted/40 text-plum-muted';
+const tintFor = (s: string) => isLunch(s) ? LUNCH_TINT : TINTS[[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % TINTS.length]!;
 
 export function TimetablePage() {
   const terms = useTerms();
@@ -133,6 +134,7 @@ function WeekGrid({ slots, days, onEdit }: { slots: Slot[]; days: number[]; onEd
                     title={`${s.subject_name} · ${span ? `${span} · ` : ''}${clockLabel(s.start_time)} – ${clockLabel(s.end_time)}`}
                     aria-label={`${s.subject_name}, ${DAYS[d - 1]} ${clockLabel(s.start_time)} to ${clockLabel(s.end_time)}. Edit`}>
                     <p className="truncate text-[13px] leading-tight font-bold">{s.subject_name}</p>
+                    {isLunch(s.subject_name) && <p className="truncate text-[11px] opacity-80">Free for events</p>}
                     {s.course_code && s.course_code !== s.subject_name && <p className="truncate text-[11px] opacity-80">{s.course_code}</p>}
                     {s.room && <p className="truncate text-[11px] opacity-80">{s.room}</p>}
                   </motion.button>
@@ -217,7 +219,9 @@ function SlotDialog({ slot, termId, onClose }: { slot: Slot | null; termId: stri
   return (
     <Modal open onOpenChange={o => !o && onClose()} title={slot ? 'Edit class' : 'Add a class'} description="Weekly recurring class for the selected term.">
       <form method="post" noValidate onSubmit={onSubmit} className="grid gap-4">
-        <Field label="Subject"><Input value={f.subject_name} onChange={set('subject_name')} maxLength={120} placeholder="e.g. Data Structures" autoFocus /></Field>
+        <Field label="Subject" hint="Your lunch period? Name it “Lunch”: it shows in your week, but events then aren’t counted as clashing with it.">
+          <Input value={f.subject_name} onChange={set('subject_name')} maxLength={120} placeholder="e.g. Data Structures" autoFocus />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Course code (optional)"><Input value={f.course_code} onChange={set('course_code')} maxLength={15} placeholder="CS301" /></Field>
           <Field label="Day">

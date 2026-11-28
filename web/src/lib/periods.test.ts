@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PERIODS, buildRows, periodSpan, yFor } from './periods';
+import { PERIODS, buildRows, isLunch, periodSpan, yFor } from './periods';
 import { toMinutes } from './time';
 
 describe('bell schedule', () => {
@@ -41,5 +41,12 @@ describe('bell schedule', () => {
     expect(rows[0]!.kind).toBe('extra');
     expect(rows[0]!.start).toBe(toMinutes('07:30'));
     expect(rows.at(-1)!.end).toBe(toMinutes('17:30'));
+  });
+});
+
+describe('lunch entries', () => {
+  it('matches the database rule (public._is_lunch)', () => {
+    for (const n of ['Lunch', 'lunch', 'Lunch Break', 'lunch hour', ' Lunch time ']) expect(isLunch(n)).toBe(true);
+    for (const n of ['Lunch and Learn', 'Brunch', 'Lunch-break', 'Data Structures']) expect(isLunch(n)).toBe(false);
   });
 });

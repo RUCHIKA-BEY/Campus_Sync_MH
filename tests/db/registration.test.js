@@ -129,6 +129,37 @@ test('8. missing timetable is NOT treated as free', async () => {
   });
 });
 
+test('lunch entries are free time, not clashes (migration 13)', async () => {
+  await isolated(db, async () => {
+    const ctx = await setup(); const s = await makeUser(db);
+    await slot(s, ctx.term, 1, '11:45', '12:35', 'Data Structures');
+    await slot(s, ctx.term, 1, '12:35', '13:25', '  LUNCH break ');
+    // Entirely during lunch → no clash, and the timetable counts as entered.
+    const r = await check(s, await ev(ctx, at(MON, '12:40'), at(MON, '13:20')));
+    assert.deepEqual([r.status, r.timetable_complete, r.conflicts.length], ['no_conflict', true, 0]);
+    // Spanning the class and lunch → only the class overlaps.
+    const p = await check(s, await ev(ctx, at(MON, '12:00'), at(MON, '13:00')));
+    assert.deepEqual([p.status, p.overlap_minutes, p.conflicts.map(c => c.subject)], ['partial_conflict', 35, ['Data Structures']]);
+    // A timetable holding only lunch still counts as entered.
+    const t = await makeUser(db);
+    await slot(t, ctx.term, 2, '11:45', '12:35', 'Lunch');
+    assert.equal((await check(t, await ev(ctx, at(MON, '12:00'), at(MON, '13:00')))).status, 'no_conflict');
+  });
+});
+
+test('only names that ARE lunch are skipped', async () => {
+  const names = ['Lunch', 'lunch', 'Lunch Break', 'lunch hour', ' Lunch time ', 'Lunch and Learn', 'Brunch', 'Lunch-break', 'Data Structures'];
+  const r = await db.query(`select n, public._is_lunch(n) as lunch from unnest($1::text[]) n`, [names]);
+  assert.deepEqual(Object.fromEntries(r.rows.map(x => [x.n, x.lunch])), {
+    'Lunch': true, 'lunch': true, 'Lunch Break': true, 'lunch hour': true, ' Lunch time ': true,
+    'Lunch and Learn': false, 'Brunch': false, 'Lunch-break': false, 'Data Structures': false,
+  });
+  await isolated(db, async () => {
+    const s = await makeUser(db);
+    await asUser(db, s, () => expectFail(db, `select public._is_lunch('Lunch')`, [], '42501'));
+  });
+});
+
 test('9. a changed event time is re-evaluated (nothing cached)', async () => {
   await isolated(db, async () => {
     const ctx = await setup(); const s = await makeUser(db);

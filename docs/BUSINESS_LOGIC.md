@@ -63,7 +63,7 @@ Intervals are **half-open** `[start, end)`: an event from 11:00–12:00 does **n
 1. Read the campus timezone (`Asia/Kolkata`) from `platform_settings`.
 2. For **each campus calendar day** the event touches, take the slice of the event on that day. This handles events that cross midnight.
 3. Find the academic term containing that day. If there's no term, or the student has no classes in it, mark the timetable **incomplete**.
-4. For that weekday, turn each weekly class into real timestamps for that date in campus time, and keep the ones that pass the overlap rule.
+4. For that weekday, skip entries the student named **Lunch** (also "Lunch break/hour/time"; migration 13): lunch is free time, and sections take it in different periods, so it is never assumed. Turn each remaining weekly class into real timestamps for that date in campus time, and keep the ones that pass the overlap rule.
 5. Overlap minutes = `min(event_end, class_end) − max(event_start, class_start)`, summed. Classes can't overlap each other (an exclusion constraint), so no minute is counted twice.
 6. Status:
    - **full_conflict**: overlap ≥ event duration;

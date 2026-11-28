@@ -85,3 +85,10 @@ export function periodSpan(start: string, end: string): string | null {
   if (!s || !e) return null;
   return s === e ? `Period ${s.no}` : `Periods ${s.no}–${e.no}`;
 }
+
+/**
+ * A timetable entry the student named "Lunch" (or "Lunch break/hour/time").
+ * It is free time: the server's clash check skips it (same rule as
+ * public._is_lunch in migration 13).
+ */
+export const isLunch = (subject: string) => /^lunch( break| hour| time)?$/.test(subject.trim().toLowerCase());
